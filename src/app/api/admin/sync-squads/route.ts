@@ -34,8 +34,8 @@ function mapRole(raw: string = ""): "WK" | "BAT" | "AR" | "BOWL" {
   // Wicket-keeper (check first — "wk-bat" must not fall through to BAT)
   if (r === "wk" || r.startsWith("wk-") || r.includes("keeper") || r.includes("wicket")) return "WK";
 
-  // All-rounder
-  if (r === "all" || r.includes("all-round") || r.includes("allround")) return "AR";
+  // All-rounder — "All Rounder" (space), "all-round", "allround", "allrounder"
+  if (r === "all" || r.includes("all-round") || r.includes("allround") || r.includes("all round")) return "AR";
 
   // Bowler
   if (r === "bowl" || r.startsWith("bowl") || r.includes("bowl")) return "BOWL";
@@ -122,18 +122,20 @@ export async function POST() {
 
     for (const sq of squads) {
       // Filter to T20/IPL squads (skip tour squads, women's, etc.)
-      const sqName = (sq.squadName ?? "").toLowerCase();
+      const sqName = (sq.squadName ?? sq.teamName ?? sq.name ?? "").toLowerCase();
       if (sqName.includes("women") || sqName.includes("tour")) continue;
 
-      if (!sq.squadId || !sq.squadName) continue;
+      if (!sq.squadId) continue;
 
       const squadData = await cbGet(`/series/v1/${seriesId}/squads/${sq.squadId}`);
       if (!squadData) continue;
 
-      const teamName = sq.squadName.replace(/ squad$/i, "").replace(/ ipl.*$/i, "").trim();
+      // squadName may be undefined for some squad objects — fall back to other common fields
+      const rawName: string = sq.squadName ?? sq.teamName ?? sq.name ?? "";
+      const teamName = rawName.replace(/ squad$/i, "").replace(/ ipl.*$/i, "").trim() || `Squad ${sq.squadId}`;
       const players = extractPlayers(squadData);
 
-      debug.push({ squad: sq.squadName, playersFound: players.length, sampleRole: players[0]?.roleRaw });
+      debug.push({ squad: teamName, playersFound: players.length, sampleRole: players[0]?.roleRaw });
 
       for (const p of players) {
         if (seen.has(p.cricId)) continue;
