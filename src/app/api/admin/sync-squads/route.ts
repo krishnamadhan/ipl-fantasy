@@ -125,6 +125,8 @@ export async function POST() {
       const sqName = (sq.squadName ?? "").toLowerCase();
       if (sqName.includes("women") || sqName.includes("tour")) continue;
 
+      if (!sq.squadId || !sq.squadName) continue;
+
       const squadData = await cbGet(`/series/v1/${seriesId}/squads/${sq.squadId}`);
       if (!squadData) continue;
 
