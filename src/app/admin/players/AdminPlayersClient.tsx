@@ -59,8 +59,17 @@ export default function AdminPlayersClient({ players: initial }: { players: any[
         <h1 className="text-xl font-bold text-white">Players ({players.length})</h1>
         <button
           onClick={async () => {
-            const d = await fetch("/api/admin/players/sync", { method: "POST" }).then((r) => r.json());
-            toast.success(`Synced ${d.recordsUpserted ?? 0} players`);
+            try {
+              const res = await fetch("/api/admin/sync-squads", { method: "POST" });
+              const text = await res.text();
+              const d = text ? JSON.parse(text) : {};
+              if (!res.ok) throw new Error(d.error ?? `Error ${res.status}`);
+              const rc = d.roleCounts ?? {};
+              const breakdown = Object.entries(rc).map(([r, n]) => `${n} ${r}`).join(" · ");
+              toast.success(`Synced ${d.playersUpserted ?? 0} players${breakdown ? ` (${breakdown})` : ""}`);
+            } catch (e: any) {
+              toast.error(e.message ?? "Sync failed");
+            }
           }}
           className="bg-brand text-white px-4 py-2 rounded-xl text-sm font-semibold"
         >
