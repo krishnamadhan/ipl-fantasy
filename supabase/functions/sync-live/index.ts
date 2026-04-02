@@ -1,0 +1,249 @@
+// Supabase Edge Function — syncs live match scores from Cricbuzz (RapidAPI)
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
+
+const CB_HOST = "cricbuzz-cricket.p.rapidapi.com";
+const CB_BASE = `https://${CB_HOST}`;
+
+function cbHeaders() {
+  return {
+    "X-RapidAPI-Key": Deno.env.get("RAPIDAPI_KEY")!,
+    "X-RapidAPI-Host": CB_HOST,
+  };
+}
+
+// Dream11 IPL T20 scoring — keep in sync with src/lib/fantasy/scoring.ts
+function calcPoints(s: any): number {
+  let pts = 4; // playing XI bonus
+  pts += (s.runs ?? 0) * 1;
+  pts += (s.fours ?? 0) * 0.5;
+  pts += (s.sixes ?? 0) * 1;
+  if (s.runs >= 100) pts += 8;
+  else if (s.runs >= 50) pts += 4;
+  if (s.runs === 0 && s.is_dismissed) pts -= 2;
+  if (s.balls_faced >= 10) {
+    const sr = (s.runs / s.balls_faced) * 100;
+    if (sr >= 170) pts += 6;
+    else if (sr >= 150) pts += 4;
+    else if (sr >= 130) pts += 2;
+    else if (sr < 50) pts -= 6;
+    else if (sr < 60) pts -= 4;
+    else if (sr < 70) pts -= 2;
+  }
+  pts += (s.wickets ?? 0) * 20;
+  if (s.wickets >= 5) pts += 8;
+  else if (s.wickets >= 4) pts += 4;
+  else if (s.wickets >= 3) pts += 2;
+  pts += (s.maidens ?? 0) * 4;
+  if (s.overs_bowled >= 2) {
+    const eco = s.runs_conceded / s.overs_bowled;
+    if (eco < 4) pts += 3;
+    else if (eco < 5) pts += 2;
+    else if (eco <= 6) pts += 1;
+    else if (eco >= 11) pts -= 3;
+    else if (eco >= 10) pts -= 2;
+    else if (eco >= 9) pts -= 1;
+  }
+  pts += (s.catches ?? 0) * 6;
+  if ((s.catches ?? 0) >= 3) pts += 4;
+  pts += (s.stumpings ?? 0) * 8;
+  pts += (s.run_outs ?? 0) * 8;
+  pts += (s.run_outs_assist ?? 0) * 4;
+  return pts;
+}
+
+// Cricbuzz returns batsmen/bowlers as arrays in newer wrapper but may be objects in older format
+function toArray(val: any): any[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  // Object with numeric/string keys: { "0": {...}, "1": {...} } or { bat_1: {...} }
+  return Object.values(val);
+}
+
+// Cricbuzz /mcenter/v1/{id}/scard scorecard structure:
+// Response may have: { scorecard: [...] } or { Scorecard: [...] } or { Innings: [...] }
+// Each innings has: { batsmen: [...], bowlers: [...] }
+//   OR: { batsmenData: {...}, bowlersData: {...} } in some wrapper versions
+// Batsman fields (confirmed): id, r (runs), b (balls), 4s, 6s, out_desc
+// Bowler fields (confirmed):  id, o (overs), m (maidens), r (runs), w (wickets), wd (wides)
+function getScorecard(data: any): any[] {
+  return data.scorecard ?? data.Scorecard ?? data.Innings ?? data.innings ?? [];
+}
+
+function getBatsmen(innings: any): any[] {
+  return toArray(innings.batsmen ?? innings.batsmenData ?? innings.batcard ?? innings.bat);
+}
+
+function getBowlers(innings: any): any[] {
+  return toArray(innings.bowlers ?? innings.bowlersData ?? innings.bowlcard ?? innings.bowl);
+}
+
+// Check if match has ended — Cricbuzz uses header.state === 'complete' or matchHeader.complete
+function isMatchEnded(data: any): boolean {
+  const h = data.matchHeader ?? data.header ?? {};
+  if (h.complete === true) return true;
+  if (h.matchEnded === true) return true;
+  if (typeof h.state === "string" && h.state.toLowerCase().includes("complete")) return true;
+  if (typeof h.status === "string") {
+    const s = h.status.toLowerCase();
+    if (s.includes("won") || s.includes("tied") || s.includes("abandoned") || s.includes("no result")) return true;
+  }
+  return false;
+}
+
+function getMatchWinner(data: any): string | null {
+  const h = data.matchHeader ?? data.header ?? {};
+  return h.matchWinner ?? h.result ?? null;
+}
+
+function getResultSummary(data: any): string | null {
+  const h = data.matchHeader ?? data.header ?? {};
+  return h.status ?? h.result ?? null;
+}
+
+Deno.serve(async () => {
+  const start = Date.now();
+
+  try {
+    const { data: liveMatches } = await supabase
+      .from("f11_matches")
+      .select("id, cricapi_match_id")
+      .eq("status", "live");
+
+    if (!liveMatches?.length) {
+      return new Response(JSON.stringify({ ok: true, message: "No live matches" }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    for (const match of liveMatches) {
+      if (!match.cricapi_match_id) continue;
+
+      const res = await fetch(
+        `${CB_BASE}/mcenter/v1/${match.cricapi_match_id}/scard`,
+        { headers: cbHeaders() }
+      );
+      const data = await res.json();
+      if (!data || data.error) continue;
+
+      const scorecard = getScorecard(data);
+      const matchEnded = isMatchEnded(data);
+      const statsMap = new Map<string, any>();
+
+      for (const innings of scorecard) {
+        const batsmen = getBatsmen(innings);
+        const bowlers = getBowlers(innings);
+
+        for (const b of batsmen) {
+          // Player ID: confirmed field is "id" (not batId)
+          // Some wrapper versions use batId — fall back gracefully
+          const cricId = String(b.id ?? b.batId ?? b.playerId ?? "");
+          if (!cricId || cricId === "undefined") continue;
+
+          const { data: player } = await supabase
+            .from("f11_players")
+            .select("id")
+            .eq("cricapi_player_id", cricId)
+            .maybeSingle();
+          if (!player) continue;
+
+          const existing = statsMap.get(player.id) ?? {
+            match_id: match.id, player_id: player.id,
+            runs: 0, balls_faced: 0, fours: 0, sixes: 0, is_dismissed: false,
+            batting_position: null, overs_bowled: 0, wickets: 0, runs_conceded: 0,
+            maidens: 0, wides: 0, catches: 0, stumpings: 0, run_outs: 0, run_outs_assist: 0,
+          };
+
+          // Confirmed field names: r=runs, b=balls, 4s=fours, 6s=sixes
+          // Full-word variants as fallback (unofficial-cricbuzz host uses those)
+          existing.runs += b.r ?? b.runs ?? 0;
+          existing.balls_faced += b.b ?? b.balls ?? 0;
+          existing.fours += b['4s'] ?? b.fours ?? 0;
+          existing.sixes += b['6s'] ?? b.sixes ?? 0;
+          // Dismissal: out_desc (old API), outDesc (unofficial), wicketCode (some wrappers)
+          if (b.out_desc || b.outDesc || b.wicketCode) existing.is_dismissed = true;
+
+          statsMap.set(player.id, existing);
+        }
+
+        for (const bw of bowlers) {
+          // Player ID: confirmed field is "id" (not bowlId)
+          const cricId = String(bw.id ?? bw.bowlId ?? bw.playerId ?? "");
+          if (!cricId || cricId === "undefined") continue;
+
+          const { data: player } = await supabase
+            .from("f11_players")
+            .select("id")
+            .eq("cricapi_player_id", cricId)
+            .maybeSingle();
+          if (!player) continue;
+
+          const existing = statsMap.get(player.id) ?? {
+            match_id: match.id, player_id: player.id,
+            runs: 0, balls_faced: 0, fours: 0, sixes: 0, is_dismissed: false,
+            batting_position: null, overs_bowled: 0, wickets: 0, runs_conceded: 0,
+            maidens: 0, wides: 0, catches: 0, stumpings: 0, run_outs: 0, run_outs_assist: 0,
+          };
+
+          // Confirmed: o=overs, m=maidens, r=runs conceded, w=wickets, wd=wides
+          existing.overs_bowled += parseFloat(String(bw.o ?? bw.overs ?? "0"));
+          existing.wickets += bw.w ?? bw.wickets ?? 0;
+          existing.runs_conceded += bw.r ?? bw.runs ?? 0;
+          existing.maidens += bw.m ?? bw.maidens ?? 0;
+          existing.wides += bw.wd ?? bw.wides ?? 0;
+
+          statsMap.set(player.id, existing);
+        }
+      }
+
+      // Upsert stats + compute fantasy points
+      for (const [, stats] of statsMap) {
+        stats.fantasy_points = calcPoints(stats);
+        await supabase
+          .from("f11_player_stats")
+          .upsert(stats, { onConflict: "match_id,player_id" });
+      }
+
+      // Bulk leaderboard update
+      await supabase.rpc("f11_update_leaderboard", { p_match_id: match.id });
+
+      if (matchEnded) {
+        await supabase
+          .from("f11_matches")
+          .update({
+            status: "completed",
+            winner: getMatchWinner(data),
+            result_summary: getResultSummary(data),
+            last_synced_at: new Date().toISOString(),
+          })
+          .eq("id", match.id);
+
+        await supabase
+          .from("f11_contests")
+          .update({ status: "completed" })
+          .eq("match_id", match.id)
+          .eq("status", "locked");
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ ok: true, matchesProcessed: liveMatches.length }),
+      { headers: { "Content-Type": "application/json" } }
+    );
+  } catch (err: any) {
+    await supabase.from("f11_sync_log").insert({
+      sync_type: "sync-live",
+      status: "error",
+      error_message: err.message,
+      duration_ms: Date.now() - start,
+    });
+    return new Response(JSON.stringify({ ok: false, error: err.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+});
