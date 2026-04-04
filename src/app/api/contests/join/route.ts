@@ -62,6 +62,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Contest is full" }, { status: 400 });
   }
 
+  // Check per-user entry count for this contest (max 3 teams)
+  const MAX_TEAMS_PER_CONTEST = 3;
+  const { count: userEntryCount } = await service
+    .from("f11_entries")
+    .select("id", { count: "exact", head: true })
+    .eq("contest_id", contest_id)
+    .eq("user_id", user.id);
+
+  if ((userEntryCount ?? 0) >= MAX_TEAMS_PER_CONTEST) {
+    return NextResponse.json(
+      { error: `Maximum ${MAX_TEAMS_PER_CONTEST} teams per contest` },
+      { status: 400 }
+    );
+  }
+
   // Check this specific team hasn't already joined this contest
   const { data: existing } = await service
     .from("f11_entries")

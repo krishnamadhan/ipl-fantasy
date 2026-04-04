@@ -60,7 +60,7 @@ interface LiveScoreSummary {
 
 function parseLiveScore(scorecard: any, teamHome: string, teamAway: string): LiveScoreSummary | null {
   try {
-    const innings: any[] = scorecard.scorecard ?? scorecard.Scorecard ?? scorecard.Innings ?? [];
+    const innings: any[] = scorecard.scoreCard ?? scorecard.scorecard ?? scorecard.Scorecard ?? scorecard.Innings ?? [];
     if (!innings.length) return null;
 
     const summary: LiveScoreSummary = {
@@ -101,7 +101,8 @@ function parseLiveScore(scorecard: any, teamHome: string, teamAway: string): Liv
 }
 
 function parseScorecardStats(scorecard: any): { stats: ParsedPlayerStat[]; matchComplete: boolean } {
-  const innings: any[] = scorecard.scorecard ?? scorecard.Scorecard ?? scorecard.Innings ?? [];
+  // Confirmed top-level key is "scoreCard" (camelCase) in official Cricbuzz API
+  const innings: any[] = scorecard.scoreCard ?? scorecard.scorecard ?? scorecard.Scorecard ?? scorecard.Innings ?? [];
   const statMap = new Map<string, ParsedPlayerStat>();
 
   function getOrCreate(cricbuzzId: string): ParsedPlayerStat {
@@ -118,11 +119,15 @@ function parseScorecardStats(scorecard: any): { stats: ParsedPlayerStat[]; match
   }
 
   for (const inn of innings) {
-    const batsmen = Array.isArray(inn.batsmen) ? inn.batsmen : Object.values(inn.batsmen ?? {});
-    const bowlers = Array.isArray(inn.bowlers) ? inn.bowlers : Object.values(inn.bowlers ?? {});
+    // Confirmed Cricbuzz structure: batTeamDetails.batsmenData / bowlTeamDetails.bowlersData
+    const rawBat = inn.batTeamDetails?.batsmenData ?? inn.batTeamDetails?.batsmen ?? inn.batsmen ?? {};
+    const rawBowl = inn.bowlTeamDetails?.bowlersData ?? inn.bowlTeamDetails?.bowlers ?? inn.bowlers ?? {};
+    const batsmen = Array.isArray(rawBat) ? rawBat : Object.values(rawBat);
+    const bowlers = Array.isArray(rawBowl) ? rawBowl : Object.values(rawBowl);
     const wickets: any[] = Array.isArray(inn.wickets) ? inn.wickets : Object.values(inn.wickets ?? {});
 
     for (const b of batsmen as any[]) {
+      // Confirmed field: batId (official API), fallback to id for unofficial wrappers
       const id = String(b.batId ?? b.id ?? "");
       if (!id) continue;
       const s = getOrCreate(id);
@@ -137,7 +142,8 @@ function parseScorecardStats(scorecard: any): { stats: ParsedPlayerStat[]; match
     }
 
     for (const bw of bowlers as any[]) {
-      const id = String(bw.bowlId ?? bw.id ?? "");
+      // Confirmed field: bowlerId (official API), fallback to bowlId/id for unofficial wrappers
+      const id = String(bw.bowlerId ?? bw.bowlId ?? bw.id ?? "");
       if (!id) continue;
       const s = getOrCreate(id);
       // ACCUMULATE overs via ball arithmetic to handle cricket notation correctly

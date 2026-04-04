@@ -6,10 +6,10 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { data: profile } = await supabase.from("f11_profiles").select("is_admin").eq("id", user.id).single();
-  if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const service = await createServiceClient();
+  const { data: profile } = await service.from("f11_profiles").select("is_admin").eq("id", user.id).single();
+  if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   // Only allow transition from 'locked' state
   const { data: match } = await service.from("f11_matches").select("status").eq("id", id).single();

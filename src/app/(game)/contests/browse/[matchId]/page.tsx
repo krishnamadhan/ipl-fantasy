@@ -17,7 +17,7 @@ export default async function BrowseContestsPage({ params }: { params: Promise<{
       .from("f11_contests")
       .select("*, entry_count:f11_entries(count)")
       .eq("match_id", matchId)
-      .eq("status", "open")
+      .in("status", ["open", "locked"])
       .order("entry_fee", { ascending: true }),
     supabase
       .from("f11_teams")
@@ -48,11 +48,22 @@ export default async function BrowseContestsPage({ params }: { params: Promise<{
     vc: playerMap[t.vc_id] ?? null,
   }));
 
+  // Fetch user's existing entries for all contests in this match
+  const contestIds = contests.map((c: any) => c.id);
+  const { data: myEntries } = contestIds.length > 0
+    ? await supabase
+        .from("f11_entries")
+        .select("id, contest_id, team_id")
+        .eq("user_id", user.id)
+        .in("contest_id", contestIds)
+    : { data: [] };
+
   return (
     <ContestBrowseClient
       match={match}
       contests={contests}
       myTeams={myTeams}
+      myEntries={myEntries ?? []}
       userId={user.id}
     />
   );

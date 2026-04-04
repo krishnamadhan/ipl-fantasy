@@ -64,22 +64,27 @@ function toArray(val: any): any[] {
   return Object.values(val);
 }
 
-// Cricbuzz /mcenter/v1/{id}/scard scorecard structure:
-// Response may have: { scorecard: [...] } or { Scorecard: [...] } or { Innings: [...] }
-// Each innings has: { batsmen: [...], bowlers: [...] }
-//   OR: { batsmenData: {...}, bowlersData: {...} } in some wrapper versions
-// Batsman fields (confirmed): id, r (runs), b (balls), 4s, 6s, out_desc
-// Bowler fields (confirmed):  id, o (overs), m (maidens), r (runs), w (wickets), wd (wides)
+// Cricbuzz /mcenter/v1/{id}/scard scorecard structure (confirmed from API docs):
+// Top-level key: scoreCard (camelCase) — fallback to older variants
+// Each innings has batTeamDetails.batsmenData (object with bat_N keys)
+//            and bowlTeamDetails.bowlersData (object with bowl_N keys)
+// Batsman fields: batId (player ID), runs/r, balls/b, 4s/fours, 6s/sixes, outDesc/out_desc
+// Bowler fields:  bowlerId (player ID), overs/o, maidens/m, runs/r, wickets/w, wides/wd
 function getScorecard(data: any): any[] {
-  return data.scorecard ?? data.Scorecard ?? data.Innings ?? data.innings ?? [];
+  // scoreCard is the confirmed field name; older/unofficial wrappers use lowercase variants
+  return data.scoreCard ?? data.scorecard ?? data.Scorecard ?? data.Innings ?? data.innings ?? [];
 }
 
 function getBatsmen(innings: any): any[] {
-  return toArray(innings.batsmen ?? innings.batsmenData ?? innings.batcard ?? innings.bat);
+  // Confirmed structure: innings.batTeamDetails.batsmenData (object keyed by bat_1, bat_2...)
+  const nested = innings.batTeamDetails?.batsmenData ?? innings.batTeamDetails?.batsmen;
+  return toArray(nested ?? innings.batsmen ?? innings.batsmenData ?? innings.batcard ?? innings.bat);
 }
 
 function getBowlers(innings: any): any[] {
-  return toArray(innings.bowlers ?? innings.bowlersData ?? innings.bowlcard ?? innings.bowl);
+  // Confirmed structure: innings.bowlTeamDetails.bowlersData (object keyed by bowl_1, bowl_2...)
+  const nested = innings.bowlTeamDetails?.bowlersData ?? innings.bowlTeamDetails?.bowlers;
+  return toArray(nested ?? innings.bowlers ?? innings.bowlersData ?? innings.bowlcard ?? innings.bowl);
 }
 
 // Check if match has ended — Cricbuzz uses header.state === 'complete' or matchHeader.complete
@@ -168,9 +173,8 @@ Deno.serve(async () => {
         const bowlers = getBowlers(innings);
 
         for (const b of batsmen) {
-          // Player ID: confirmed field is "id" (not batId)
-          // Some wrapper versions use batId — fall back gracefully
-          const cricId = String(b.id ?? b.batId ?? b.playerId ?? "");
+          // Player ID: confirmed field is "batId" in official Cricbuzz API
+          const cricId = String(b.batId ?? b.id ?? b.playerId ?? "");
           if (!cricId || cricId === "undefined") continue;
 
           const { data: player } = await supabase
@@ -200,8 +204,8 @@ Deno.serve(async () => {
         }
 
         for (const bw of bowlers) {
-          // Player ID: confirmed field is "id" (not bowlId)
-          const cricId = String(bw.id ?? bw.bowlId ?? bw.playerId ?? "");
+          // Player ID: confirmed field is "bowlerId" in official Cricbuzz API
+          const cricId = String(bw.bowlerId ?? bw.id ?? bw.bowlId ?? bw.playerId ?? "");
           if (!cricId || cricId === "undefined") continue;
 
           const { data: player } = await supabase
