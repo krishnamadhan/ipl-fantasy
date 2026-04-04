@@ -152,31 +152,30 @@ export default function AdminDashboard({
                       if (d.ok) toast.success("Lineups open!"); else toast.error(d.error);
                     })} />
                 )}
-                {m.status === "open" && (
+                {(m.status === "open" || m.status === "locked") && (
                   <ActionBtn label="Sync Playing XI" color="blue" loading={loading === `xi-${m.id}`}
                     onClick={() => action(`xi-${m.id}`, async () => {
                       const d = await post(`/api/admin/matches/${m.id}/sync-playing-xi`);
-                      if (d.ok) toast.success(`Playing XI: ${d.playingCount} players`);
+                      if (d.ok) toast.success(`Playing XI: ${d.playingCount} players (${d.source ?? ""})`);
                       else toast.error(d.error ?? "Sync failed");
                     })} />
                 )}
-                {m.status === "locked" && (
-                  <>
-                    <ActionBtn label="Sync Playing XI" color="blue" loading={loading === `xi-${m.id}`}
-                      onClick={() => action(`xi-${m.id}`, async () => {
-                        const d = await post(`/api/admin/matches/${m.id}/sync-playing-xi`);
-                        if (d.ok) toast.success(`Playing XI: ${d.playingCount} players`);
-                        else toast.error(d.error ?? "Sync failed");
-                      })} />
-                    <ActionBtn label="Go Live 🔴" color="red" loading={loading === `live-${m.id}`}
-                      onClick={() => {
-                        if (!confirm("Start live scoring? This locks all teams.")) return;
-                        action(`live-${m.id}`, async () => {
-                          const d = await post(`/api/admin/matches/${m.id}/go-live`);
-                          if (d.ok) toast.success("Match is live!"); else toast.error(d.error);
-                        });
-                      }} />
-                  </>
+                {m.status === "open" && (
+                  <ActionBtn label="Lock 🔒" color="slate" loading={loading === `lock-${m.id}`}
+                    onClick={() => action(`lock-${m.id}`, async () => {
+                      const d = await post(`/api/admin/matches/${m.id}/lock`);
+                      if (d.ok) toast.success("Match locked!"); else toast.error(d.error);
+                    })} />
+                )}
+                {(m.status === "open" || m.status === "locked") && (
+                  <ActionBtn label="Go Live 🔴" color="red" loading={loading === `live-${m.id}`}
+                    onClick={() => {
+                      if (!confirm("Start live scoring? This locks all teams.")) return;
+                      action(`live-${m.id}`, async () => {
+                        const d = await post(`/api/admin/matches/${m.id}/go-live`);
+                        if (d.ok) toast.success("Match is live!"); else toast.error(d.error);
+                      });
+                    }} />
                 )}
                 {m.status === "in_review" && (
                   <ActionBtn label="Finalize ✓" color="green" loading={loading === `complete-${m.id}`}
