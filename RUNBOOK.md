@@ -60,13 +60,13 @@ OR the admin can click **"Mark In Review"** manually.
 ### Path 1 — Supabase Edge Function (primary)
 - File: `supabase/functions/sync-live/index.ts`
 - Triggered by Supabase Cron: set to **every 2 minutes**
-- Time guard: only runs **14:00–18:30 UTC (7:30 PM–midnight IST)**
+- Time guard: only runs **10:00–18:30 UTC (3:30 PM–midnight IST)** — covers both afternoon and evening slots
 - Staleness check: if a match has been `live` for >5.5 hours since `scheduled_at`, auto-moves it to `in_review`
 
 ### Path 2 — Next.js API Route (fallback / manual trigger)
 - File: `src/app/api/cron/sync-live/route.ts`
 - URL: `GET /api/cron/sync-live` (requires `Authorization: Bearer <CRON_SECRET>`)
-- Same time guard and staleness check as Path 1
+- Same time guard (10:00–18:30 UTC) and staleness check as Path 1
 - Can be triggered manually from admin or via Vercel Cron (not configured — Hobby plan limitation)
 
 ### Changing the Supabase Cron Schedule

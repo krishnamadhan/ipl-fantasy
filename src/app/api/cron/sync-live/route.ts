@@ -212,14 +212,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "RAPIDAPI_KEY not set" }, { status: 500 });
   }
 
-  // Time guard: only run during evening IPL match window (14:00–18:30 UTC = 7:30 PM–midnight IST)
-  // Prevents burning RapidAPI credits outside match windows.
+  // Time guard: only run during IPL match windows (10:00–18:30 UTC = 3:30 PM–midnight IST)
+  // Covers both slots: afternoon (3:30 PM IST) and evening (7:30 PM IST).
+  // Staleness check handles the "forgot to close" case inside the window.
   const nowUTC = new Date();
   const utcMinutes = nowUTC.getUTCHours() * 60 + nowUTC.getUTCMinutes();
-  const WINDOW_START = 14 * 60;      // 14:00 UTC = 7:30 PM IST
+  const WINDOW_START = 10 * 60;      // 10:00 UTC = 3:30 PM IST
   const WINDOW_END   = 18 * 60 + 30; // 18:30 UTC = midnight IST
   if (utcMinutes < WINDOW_START || utcMinutes > WINDOW_END) {
-    return NextResponse.json({ ok: true, message: "Outside IPL match hours (7:30 PM–midnight IST), skipping", synced: 0 });
+    return NextResponse.json({ ok: true, message: "Outside IPL match hours (3:30 PM–midnight IST), skipping", synced: 0 });
   }
 
   const admin = await createServiceClient();

@@ -322,6 +322,6 @@ Any modal, bottom sheet, or overlay in game pages must use `z-[60]` or higher to
 
 4. **Cricbuzz team name field**: `squadType` is the actual team name. `squadName` / `teamName` are usually empty or contain generic labels. This took significant debugging to discover.
 
-5. **Afternoon matches**: The time guard starts at 14:00 UTC (7:30 PM IST), which means afternoon IPL matches (3:30 PM IST / 10:00 UTC) are NOT synced automatically. If afternoon matches are added to the schedule, update `WINDOW_START` in both sync files to `10 * 60`.
+5. **Match windows**: Time guard covers 10:00–18:30 UTC (3:30 PM–midnight IST), which handles both afternoon (3:30 PM IST) and evening (7:30 PM IST) slots. The staleness check (5.5 hrs) protects against forgotten matches in either window.
 
 6. **Next.js `.next` cache**: If you see stale data in server components after code changes, run `rm -rf .next && npm run dev` to clear build artifacts.

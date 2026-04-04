@@ -109,15 +109,15 @@ Deno.serve(async () => {
   const start = Date.now();
 
   try {
-    // Guard: only run during evening IPL match window (14:00–18:30 UTC = 7:30 PM–midnight IST)
-    // Afternoon matches (3:30 PM IST) are rare; conservative guard prevents burning RapidAPI
-    // credits if someone forgets to manually close a live match.
+    // Guard: only run during IPL match windows (10:00–18:30 UTC = 3:30 PM–midnight IST)
+    // Covers both slots: afternoon (3:30 PM IST) and evening (7:30 PM IST).
+    // Staleness check below handles the "forgot to close" case inside the window.
     const nowUTC = new Date();
     const utcMinutes = nowUTC.getUTCHours() * 60 + nowUTC.getUTCMinutes();
-    const WINDOW_START = 14 * 60;      // 14:00 UTC = 7:30 PM IST
-    const WINDOW_END   = 18 * 60 + 30; // 18:30 UTC = 00:00 IST (T20 + 1hr buffer)
+    const WINDOW_START = 10 * 60;      // 10:00 UTC = 3:30 PM IST
+    const WINDOW_END   = 18 * 60 + 30; // 18:30 UTC = midnight IST (T20 + 1hr buffer)
     if (utcMinutes < WINDOW_START || utcMinutes > WINDOW_END) {
-      return new Response(JSON.stringify({ ok: true, message: "Outside IPL match hours (7:30 PM–midnight IST), skipping" }), {
+      return new Response(JSON.stringify({ ok: true, message: "Outside IPL match hours (3:30 PM–midnight IST), skipping" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
