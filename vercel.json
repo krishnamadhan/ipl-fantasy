@@ -1,13 +1,4 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/sync-live",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/enforce-deadlines",
-      "schedule": "*/5 * * * *"
-    }
-  ]
+  "crons": []
 }
 
