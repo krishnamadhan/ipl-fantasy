@@ -16,18 +16,19 @@ async function cbGet(path: string) {
   try { return await res.json(); } catch { return null; }
 }
 
-/** Extract Cricbuzz player IDs from a scorecard innings object.
- *  Handles both confirmed structure (batTeamDetails.batsmenData)
- *  and older/unofficial wrapper variants (innings.batsmen / innings.bowlers).
+/** Extract Cricbuzz player IDs from one innings object.
+ *  Handles both the confirmed "batTeamDetails.batsmenData" nested structure
+ *  AND the simpler live structure where batsman/bowler are top-level arrays.
  */
 function idsFromInnings(innings: any): string[] {
   const ids: string[] = [];
 
-  // Batsmen — confirmed: batTeamDetails.batsmenData (object keyed by bat_1, bat_2…)
+  // Batsmen — try nested structure first, then top-level array (live matches use singular "batsman")
   const rawBat =
     innings.batTeamDetails?.batsmenData ??
     innings.batTeamDetails?.batsmen ??
     innings.batsmen ??
+    innings.batsman ??    // ← live API uses singular "batsman" array
     innings.batsmenData ?? {};
   const batList = Array.isArray(rawBat) ? rawBat : Object.values(rawBat);
   for (const b of batList as any[]) {
@@ -35,11 +36,12 @@ function idsFromInnings(innings: any): string[] {
     if (id && id !== "0") ids.push(id);
   }
 
-  // Bowlers — confirmed: bowlTeamDetails.bowlersData
+  // Bowlers — try nested first, then top-level array (live API uses singular "bowler")
   const rawBowl =
     innings.bowlTeamDetails?.bowlersData ??
     innings.bowlTeamDetails?.bowlers ??
     innings.bowlers ??
+    innings.bowler ??     // ← live API uses singular "bowler" array
     innings.bowlersData ?? {};
   const bowlList = Array.isArray(rawBowl) ? rawBowl : Object.values(rawBowl);
   for (const bw of bowlList as any[]) {
@@ -50,29 +52,92 @@ function idsFromInnings(innings: any): string[] {
   return ids;
 }
 
-/** Extract player IDs from the mcenter team/players object (pre-match lineup).
- *  Cricbuzz mcenter returns: { Players: { [teamId]: { playing11: [...], bench: [...] } } }
- */
-function idsFromMcenter(data: any): { playing: string[]; bench: string[] } {
+/** Extract player IDs from the mcenter team/players object (pre-match lineup). */
+function idsFromMcenter(data: any): string[] {
   const playing: string[] = [];
-  const bench: string[] = [];
-
   const playersObj = data.Players ?? data.players ?? {};
   for (const teamData of Object.values(playersObj) as any[]) {
-    const p11 = Array.isArray(teamData?.playing11) ? teamData.playing11 : [];
-    const bn  = Array.isArray(teamData?.bench)     ? teamData.bench     : [];
-
-    for (const p of p11) {
+    for (const p of (Array.isArray(teamData?.playing11) ? teamData.playing11 : [])) {
       const id = String(p.id ?? p.playerId ?? "").trim();
       if (id && id !== "0") playing.push(id);
     }
-    for (const p of bn) {
-      const id = String(p.id ?? p.playerId ?? "").trim();
-      if (id && id !== "0") bench.push(id);
+  }
+  return playing;
+}
+
+/** Parse playing XI player names from Cricbuzz commentary.
+ *  Around toss time the commentary contains:
+ *  "B0$ (Playing XI): KL Rahul(w), Pathum Nissanka, ..."
+ */
+function namesFromCommentary(commData: any): string[] {
+  const names: string[] = [];
+  for (const item of (commData?.comwrapper ?? [])) {
+    const txt: string = item?.commentary?.commtxt ?? "";
+    if (!txt.includes("(Playing XI):")) continue;
+    const cleaned = txt.replace(/[A-Z][0-9]\$\s*/g, "").trim();
+    const match = cleaned.match(/\(Playing XI\):\s*(.+)/);
+    if (!match) continue;
+    for (const raw of match[1].split(",")) {
+      const name = raw.trim().replace(/\s*\([wc]\)/g, "").trim();
+      if (name) names.push(name);
     }
   }
+  return names;
+}
 
-  return { playing, bench };
+/** Fuzzy-match a list of names against f11_players for the two match teams.
+ *  Returns a Set of matched internal UUIDs.
+ */
+async function matchNamesToDB(
+  admin: any,
+  names: string[],
+  teamHome: string,
+  teamAway: string
+): Promise<Set<string>> {
+  if (names.length === 0) return new Set();
+
+  const { data: teamPlayers } = await admin
+    .from("f11_players")
+    .select("id, name")
+    .in("ipl_team", [teamHome, teamAway])
+    .eq("is_playing", true);
+
+  if (!teamPlayers?.length) return new Set();
+
+  const matched = new Set<string>();
+
+  for (const cbName of names) {
+    const cbLower = cbName.toLowerCase();
+    const cbParts = cbLower.split(" ");
+    let best: { id: string; score: number } | null = null;
+
+    for (const player of teamPlayers) {
+      const dbLower = player.name.toLowerCase();
+      const dbParts = dbLower.split(" ");
+      let score = 0;
+
+      if (dbLower === cbLower) { score = 100; }
+      else if (dbLower.includes(cbLower)) { score = 90; }
+      else if (cbLower.includes(dbLower)) { score = 85; }
+      else {
+        const matchingWords = cbParts.filter((w) => w.length > 2 && dbParts.includes(w));
+        score = matchingWords.length * 30;
+        const cbLast = cbParts[cbParts.length - 1];
+        const dbLast = dbParts[dbParts.length - 1];
+        if (cbLast.length > 3 && cbLast === dbLast) score += 40;
+        // Initial match: "T Natarajan" → "Thangarasu Natarajan"
+        if (cbParts.length >= 2 && dbParts.length >= 2 && cbParts[0].length === 1 && dbParts[0][0] === cbParts[0]) score += 20;
+      }
+
+      if (score > 60 && (!best || score > best.score)) {
+        best = { id: player.id, score };
+      }
+    }
+
+    if (best) matched.add(best.id);
+  }
+
+  return matched;
 }
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -96,44 +161,67 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const cricMatchId = match.cricapi_match_id;
-  let playingCricIds = new Set<string>();
-  let source = "";
+  const playingCricIds = new Set<string>(); // Cricbuzz IDs (for scard/mcenter strategies)
+  const playingPlayerIds = new Set<string>(); // our internal UUIDs (for all strategies)
+  const sources: string[] = [];
 
-  // ── Strategy 1: Try scard (live/completed matches — has actual playing XI from scorecard) ──
+  // ── Strategy 1: Scard — best source for live/completed matches ──
+  // The live API returns innings.batsman (singular array) with ALL batting XI players listed,
+  // and innings.bowler (singular array) with bowlers who have bowled so far.
+  // Combining both innings gives the full 22-player playing XI once both have batted.
   const scardData = await cbGet(`/mcenter/v1/${cricMatchId}/scard`);
   if (scardData && !scardData.error) {
-    // Top-level scorecard key: scoreCard (confirmed official API), fallbacks for wrappers
     const scorecard: any[] =
       scardData.scoreCard ?? scardData.scorecard ?? scardData.Scorecard ?? scardData.Innings ?? [];
 
-    if (scorecard.length > 0) {
-      for (const innings of scorecard) {
-        for (const id of idsFromInnings(innings)) {
-          playingCricIds.add(id);
-        }
-      }
-      if (playingCricIds.size > 0) source = "scard";
+    for (const innings of scorecard) {
+      for (const id of idsFromInnings(innings)) playingCricIds.add(id);
+    }
+
+    if (playingCricIds.size > 0) {
+      const { data: players } = await admin
+        .from("f11_players")
+        .select("id")
+        .in("cricapi_player_id", Array.from(playingCricIds));
+      (players ?? []).forEach((p) => playingPlayerIds.add(p.id));
+      sources.push(`scard(${playingCricIds.size} ids→${playingPlayerIds.size} matched)`);
     }
   }
 
-  // ── Strategy 2: Try mcenter playing11 (announced pre-match lineups) ──
-  if (playingCricIds.size === 0) {
+  // ── Strategy 2: Commentary — reliable for toss/pre-match and supplements live scard ──
+  // Cricbuzz posts "(Playing XI): Name1, Name2, ..." at toss time.
+  // This covers the fielding team who won't appear in scard until they bat.
+  if (playingPlayerIds.size < 22) {
+    const commData = await cbGet(`/mcenter/v1/${cricMatchId}/comm`);
+    if (commData && !commData.error) {
+      const names = namesFromCommentary(commData);
+      if (names.length > 0) {
+        const commMatched = await matchNamesToDB(admin, names, match.team_home, match.team_away);
+        const added = [...commMatched].filter((id) => !playingPlayerIds.has(id)).length;
+        commMatched.forEach((id) => playingPlayerIds.add(id));
+        if (commMatched.size > 0) sources.push(`comm-names(${names.length} names→${commMatched.size} matched, +${added} new)`);
+      }
+    }
+  }
+
+  // ── Strategy 3: Mcenter playing11 (pre-announced lineup, less common) ──
+  if (playingPlayerIds.size < 22) {
     const mcenterData = await cbGet(`/mcenter/v1/${cricMatchId}`);
     if (mcenterData && !mcenterData.error) {
-      const { playing, bench } = idsFromMcenter(mcenterData);
-      if (playing.length > 0) {
-        playing.forEach((id) => playingCricIds.add(id));
-        source = "mcenter-playing11";
-      } else if (bench.length > 0) {
-        // Only bench found — squad announced but playing XI not confirmed yet
-        // Still mark what we have so user sees some data
-        [...playing, ...bench].forEach((id) => playingCricIds.add(id));
-        source = "mcenter-squad-only";
+      const mcIds = idsFromMcenter(mcenterData);
+      if (mcIds.length > 0) {
+        const { data: players } = await admin
+          .from("f11_players")
+          .select("id")
+          .in("cricapi_player_id", mcIds);
+        const added = (players ?? []).filter((p) => !playingPlayerIds.has(p.id)).length;
+        (players ?? []).forEach((p) => playingPlayerIds.add(p.id));
+        if (players?.length) sources.push(`mcenter(+${added} new)`);
       }
     }
   }
 
-  if (playingCricIds.size === 0) {
+  if (playingPlayerIds.size === 0) {
     return NextResponse.json({
       ok: true,
       message: "No playing XI data yet — playing XI may not have been announced",
@@ -143,15 +231,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     });
   }
 
-  // Look up internal player IDs by Cricbuzz ID
-  const { data: players } = await admin
-    .from("f11_players")
-    .select("id, cricapi_player_id, name")
-    .in("cricapi_player_id", Array.from(playingCricIds));
-
-  const playingPlayerIds = new Set((players ?? []).map((p) => p.id));
-
-  // Get all players for this match's teams
+  // Mark playing/bench for all players in both teams
   const { data: allMatchPlayers } = await admin
     .from("f11_players")
     .select("id")
@@ -176,8 +256,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     ok: true,
     playingCount,
     benchedCount,
-    source,
-    matchedFromCricbuzz: players?.length ?? 0,
-    totalCricbuzzIds: playingCricIds.size,
+    source: sources.join(" + "),
+    totalMatched: playingPlayerIds.size,
   });
 }
