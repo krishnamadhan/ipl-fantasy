@@ -4,7 +4,7 @@ import Link from "next/link";
 import { shortTeam, TEAM_COLORS, formatTimeIST } from "@/lib/utils/format";
 import CountdownTimer from "@/components/ui/CountdownTimer";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 function formatPrize(amount: number): string {
   if (amount >= 10_000_000) return `₹${(amount / 10_000_000).toFixed(1)} Cr`;
@@ -27,8 +27,8 @@ export default async function MatchesPage() {
   const matchIds = (matches ?? []).map((m) => m.id);
   const { data: contestData } = await supabase
     .from("f11_contests")
-    .select("match_id, prize_pool")
-    .eq("status", "open")
+    .select("match_id, prize_pool, status")
+    .in("status", ["open", "locked"])
     .in("match_id", matchIds.length ? matchIds : ["00000000-0000-0000-0000-000000000000"]);
 
   const contestMap = new Map<string, { count: number; totalPrize: number }>();

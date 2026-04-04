@@ -212,9 +212,20 @@ function parseScorecardStats(scorecard: any): { stats: ParsedPlayerStat[]; match
     }
   }
 
-  // Detect match complete
+  // Detect match complete — Cricbuzz uses several different signals
   const state = (scorecard.matchHeader?.state ?? scorecard.header?.state ?? "").toLowerCase();
-  const matchComplete = state === "complete" || state === "result";
+  const statusText = (
+    scorecard.status ??
+    scorecard.matchHeader?.statusText ??
+    scorecard.matchHeader?.status ??
+    ""
+  ).toLowerCase();
+  const matchComplete =
+    state === "complete" ||
+    state === "result" ||
+    scorecard.matchHeader?.complete === true ||
+    // Status text contains a result phrase
+    /\b(won by|tied|no result|match drawn)\b/.test(statusText);
 
   return { stats: Array.from(statMap.values()), matchComplete };
 }
@@ -368,8 +379,10 @@ export async function GET(req: NextRequest) {
 
       // 8. Move to in_review if match ended (admin will verify + finalize)
       if (matchComplete) {
+        const resultText = liveScore?.situation ||
+          (data.status ?? data.matchHeader?.statusText ?? "Match complete");
         await admin.from("f11_matches")
-          .update({ status: "in_review" })
+          .update({ status: "in_review", result_summary: resultText })
           .eq("id", match.id)
           .eq("status", "live"); // guard: don't overwrite if already in_review
         // Do NOT complete contests yet — admin must click Finalize

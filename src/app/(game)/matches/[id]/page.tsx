@@ -5,7 +5,7 @@ import { formatCurrency, shortTeam, formatDateTime } from "@/lib/utils/format";
 import type { IplMatch } from "@/types/match";
 import CountdownTimer from "@/components/ui/CountdownTimer";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 const TEAM_COLORS: Record<string, string> = {
   CSK: "#F5A623", MI: "#004BA0", RCB: "#EC1C24", KKR: "#3A225D",
@@ -132,8 +132,8 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
             </div>
           </div>
 
-          {/* Toss / result */}
-          {m.result_summary && (
+          {/* Toss / result — only show when match is complete */}
+          {(isCompleted || isInReview) && m.result_summary && (
             <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-3 py-2 mb-3 text-center">
               <p className="text-green-400 text-sm font-bold">{m.result_summary}</p>
             </div>

@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const locked: string[] = [];
   const errors: string[] = [];
 
-  // ── 1. AUTO-OPEN: scheduled matches starting within 24h ──────────────────
+  // ── 1. AUTO-OPEN: scheduled matches starting within 24h (and not yet started) ──
   const { data: toOpen } = await admin
     .from("f11_matches")
     .select("id, team_home, team_away, scheduled_at")
@@ -52,6 +52,28 @@ export async function GET(req: NextRequest) {
         .eq("status", "scheduled");
 
       opened.push(`${m.team_home} vs ${m.team_away}`);
+    }
+  }
+
+  // ── 1b. AUTO-LOCK FORGOTTEN: scheduled matches whose start time already passed ──
+  // If admin forgot to open before match start, jump directly to locked.
+  const { data: forgottenScheduled } = await admin
+    .from("f11_matches")
+    .select("id, team_home, team_away")
+    .eq("status", "scheduled")
+    .lt("scheduled_at", now);
+
+  for (const m of forgottenScheduled ?? []) {
+    const { error } = await admin
+      .from("f11_matches")
+      .update({ status: "locked" })
+      .eq("id", m.id)
+      .eq("status", "scheduled");
+
+    if (error) {
+      errors.push(`lock-forgotten ${m.id}: ${error.message}`);
+    } else {
+      locked.push(`${m.team_home} vs ${m.team_away} (auto-locked, missed open window)`);
     }
   }
 
