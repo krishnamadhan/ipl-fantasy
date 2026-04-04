@@ -74,25 +74,26 @@ function parseLiveScore(scorecard: any, teamHome: string, teamAway: string): Liv
       const score = inn.score ?? inn.runs ?? 0;
       const wickets = inn.wickets ?? 0;
       const overs = String(inn.overs ?? inn.currentOver ?? "0.0");
-      const battingTeam = inn.bat ?? inn.battingTeam ?? "";
+      // Live API uses "batteamname" / "batteamsname", nested uses "bat" / "battingTeam"
+      const battingTeam = inn.batteamname ?? inn.battingTeam ?? inn.bat ?? "";
 
       if (i === 0) {
         summary.team1 = battingTeam || teamHome;
         summary.team1_runs = score;
-        summary.team1_wickets = wickets;
+        summary.team1_wickets = typeof wickets === "number" ? wickets : 0;
         summary.team1_overs = overs;
       } else {
         summary.team2 = battingTeam || teamAway;
         summary.team2_runs = score;
-        summary.team2_wickets = wickets;
+        summary.team2_wickets = typeof wickets === "number" ? wickets : 0;
         summary.team2_overs = overs;
       }
     }
 
     // Current batting / chase situation
     const latestInn = innings[innings.length - 1];
-    summary.current_batting = latestInn?.bat ?? latestInn?.battingTeam ?? "";
-    summary.situation = scorecard.matchHeader?.statusText ?? scorecard.status ?? "";
+    summary.current_batting = latestInn?.batteamname ?? latestInn?.battingTeam ?? latestInn?.bat ?? "";
+    summary.situation = scorecard.status ?? scorecard.matchHeader?.statusText ?? "";
 
     return summary;
   } catch {
@@ -119,35 +120,48 @@ function parseScorecardStats(scorecard: any): { stats: ParsedPlayerStat[]; match
   }
 
   for (const inn of innings) {
-    // Confirmed Cricbuzz structure: batTeamDetails.batsmenData / bowlTeamDetails.bowlersData
-    const rawBat = inn.batTeamDetails?.batsmenData ?? inn.batTeamDetails?.batsmen ?? inn.batsmen ?? {};
-    const rawBowl = inn.bowlTeamDetails?.bowlersData ?? inn.bowlTeamDetails?.bowlers ?? inn.bowlers ?? {};
+    // Live Cricbuzz API (scard endpoint) uses:
+    //   inn.batsman  — singular array of all batting XI with fields: id, runs, balls, fours, sixes, outdec
+    //   inn.bowler   — singular array of bowlers who've bowled with fields: id, overs, wickets, runs, maidens
+    // Nested/historical API uses:
+    //   inn.batTeamDetails.batsmenData — object keyed by bat_1/bat_2 with fields: batId, r, b, 4s, 6s, outDesc
+    //   inn.bowlTeamDetails.bowlersData — object keyed by bowl_1/bowl_2 with fields: bowlerId, o, w, r, m
+    const rawBat =
+      inn.batTeamDetails?.batsmenData ??
+      inn.batTeamDetails?.batsmen ??
+      inn.batsmen ??
+      inn.batsman ?? {};  // live API: singular "batsman"
+    const rawBowl =
+      inn.bowlTeamDetails?.bowlersData ??
+      inn.bowlTeamDetails?.bowlers ??
+      inn.bowlers ??
+      inn.bowler ?? {};   // live API: singular "bowler"
     const batsmen = Array.isArray(rawBat) ? rawBat : Object.values(rawBat);
     const bowlers = Array.isArray(rawBowl) ? rawBowl : Object.values(rawBowl);
-    const wickets: any[] = Array.isArray(inn.wickets) ? inn.wickets : Object.values(inn.wickets ?? {});
+    // wickets in live API is a count (number), not an array — only treat as array if it is one
+    const wickets: any[] = Array.isArray(inn.wickets) ? inn.wickets : [];
 
     for (const b of batsmen as any[]) {
-      // Confirmed field: batId (official API), fallback to id for unofficial wrappers
-      const id = String(b.batId ?? b.id ?? "");
-      if (!id) continue;
+      // Live API: id (number). Nested API: batId. Fallback: playerId
+      const id = String(b.batId ?? b.id ?? b.playerId ?? "");
+      if (!id || id === "0") continue;
       const s = getOrCreate(id);
-      // ACCUMULATE across innings (e.g. all-rounders, super overs)
       s.runs += (b.r ?? b.runs ?? 0);
       s.balls_faced += (b.b ?? b.balls ?? 0);
       s.fours += (b["4s"] ?? b.fours ?? 0);
       s.sixes += (b["6s"] ?? b.sixes ?? 0);
-      // Dismissed if outDesc is not "not out" or "batting" in ANY innings
-      const outDesc = (b.outDesc ?? b.out_desc ?? "not out").toLowerCase();
-      s.is_dismissed = s.is_dismissed || (outDesc !== "not out" && outDesc !== "batting" && outDesc !== "");
+      // Live API uses "outdec" (lowercase), nested uses "outDesc"
+      const outDesc = (b.outDesc ?? b.outdec ?? b.out_desc ?? "").toLowerCase().trim();
+      s.is_dismissed = s.is_dismissed || (outDesc !== "" && outDesc !== "not out" && outDesc !== "batting");
     }
 
     for (const bw of bowlers as any[]) {
-      // Confirmed field: bowlerId (official API), fallback to bowlId/id for unofficial wrappers
-      const id = String(bw.bowlerId ?? bw.bowlId ?? bw.id ?? "");
-      if (!id) continue;
+      // Live API: id (number). Nested API: bowlerId. Fallback: bowlId/playerId
+      const id = String(bw.bowlerId ?? bw.bowlId ?? bw.id ?? bw.playerId ?? "");
+      if (!id || id === "0") continue;
       const s = getOrCreate(id);
-      // ACCUMULATE overs via ball arithmetic to handle cricket notation correctly
-      const newOvCN = parseFloat(bw.o ?? bw.overs ?? "0");
+      // Live API: overs as string e.g. "0.1". Nested API: o as number.
+      const newOvCN = parseFloat(String(bw.o ?? bw.overs ?? "0"));
       const newBalls = Math.floor(newOvCN) * 6 + Math.round((newOvCN % 1) * 10);
       const existingBalls = Math.floor(s.overs_bowled) * 6 + Math.round((s.overs_bowled % 1) * 10);
       const totalBalls = existingBalls + newBalls;
@@ -157,9 +171,7 @@ function parseScorecardStats(scorecard: any): { stats: ParsedPlayerStat[]; match
       s.maidens += (bw.m ?? bw.maidens ?? 0);
     }
 
-    // Parse fielding credits from wicket descriptions
-    // Cricbuzz provides both structured fielderIds AND a dismissal string —
-    // use the parsed dismissal type for credit allocation, fielderIds for ID mapping.
+    // Parse fielding credits from wicket array (only available in nested/historical API)
     for (const w of wickets) {
       const wktDesc: string = w.wktDesc ?? w.dismissal ?? "";
       const parsed = parseDismissal(wktDesc);
