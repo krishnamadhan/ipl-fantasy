@@ -169,7 +169,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
                   + Build Team
                 </Link>
               ) : (
-                <Link href={`/team-builder/${m.id}`}
+                <Link href={`/team-builder/${m.id}?teamId=${myTeam.id}`}
                   className="flex-1 border-2 border-slate-600 text-slate-300 text-center font-black py-3.5 rounded-2xl text-sm hover:border-slate-500 transition">
                   Edit Team
                 </Link>
