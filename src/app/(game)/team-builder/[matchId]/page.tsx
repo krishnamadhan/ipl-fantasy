@@ -4,8 +4,16 @@ import TeamBuilderClient from "@/components/team-builder/TeamBuilderClient";
 import type { IplPlayer } from "@/types/player";
 import type { IplMatch } from "@/types/match";
 
-export default async function TeamBuilderPage({ params }: { params: Promise<{ matchId: string }> }) {
+export default async function TeamBuilderPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ matchId: string }>;
+  searchParams: Promise<{ teamId?: string }>;
+}) {
   const { matchId } = await params;
+  const { teamId } = await searchParams;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -33,21 +41,16 @@ export default async function TeamBuilderPage({ params }: { params: Promise<{ ma
   if (!matchRes.data) notFound();
 
   const match = matchRes.data as IplMatch;
-  // Only allow team building when match is in 'open' state
-  if (match.status !== "open") {
-    redirect(`/matches/${matchId}`);
-  }
+  if (match.status !== "open") redirect(`/matches/${matchId}`);
 
   const allPlayers = (playersRes.data ?? []) as IplPlayer[];
-  const matchPlayers = matchRes.data ? (matchPlayersRes.data ?? []) : [];
+  const matchPlayers = matchPlayersRes.data ?? [];
 
-  // Build playing XI lookup
   const playingXiMap = new Map<string, boolean>();
   for (const mp of matchPlayers) {
     playingXiMap.set(mp.player_id, mp.is_playing_xi);
   }
 
-  // Filter to match teams + add playing XI meta
   const matchPlayersList = allPlayers
     .filter((p) => p.ipl_team === match.team_home || p.ipl_team === match.team_away)
     .map((p) => ({
@@ -55,12 +58,43 @@ export default async function TeamBuilderPage({ params }: { params: Promise<{ ma
       is_playing_xi: playingXiMap.has(p.id) ? playingXiMap.get(p.id) : undefined,
     }));
 
+  // If editing an existing team, load it and verify ownership
+  let editTeam: {
+    id: string;
+    teamName: string;
+    selectedPlayers: IplPlayer[];
+    captainId: string;
+    vcId: string;
+  } | null = null;
+
+  if (teamId) {
+    const { data: existingTeam } = await supabase
+      .from("f11_teams")
+      .select("id, team_name, player_ids, captain_id, vc_id, user_id")
+      .eq("id", teamId)
+      .eq("user_id", user.id)   // ownership check
+      .eq("match_id", matchId)  // safety: must be same match
+      .single();
+
+    if (existingTeam) {
+      const playerIdSet = new Set<string>(existingTeam.player_ids as string[]);
+      editTeam = {
+        id: existingTeam.id,
+        teamName: existingTeam.team_name,
+        selectedPlayers: matchPlayersList.filter((p) => playerIdSet.has(p.id)),
+        captainId: existingTeam.captain_id,
+        vcId: existingTeam.vc_id,
+      };
+    }
+  }
+
   return (
     <TeamBuilderClient
       match={match}
       players={matchPlayersList}
       userId={user.id}
       existingTeamCount={teamCountRes.count ?? 0}
+      editTeam={editTeam}
     />
   );
 }

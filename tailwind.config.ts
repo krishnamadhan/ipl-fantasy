@@ -10,13 +10,17 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "#F5A623",
-          dark: "#E8950F",
+          DEFAULT: "#e53935",
+          dark: "#c62828",
+        },
+        gold: {
+          DEFAULT: "#ffd900",
+          dark: "#f7b606",
         },
         surface: {
-          DEFAULT: "#080d1a",
-          card: "#111827",
-          elevated: "#1a2235",
+          DEFAULT: "#000000",
+          card: "#1a1a1a",
+          elevated: "#222222",
         },
       },
       backgroundImage: {

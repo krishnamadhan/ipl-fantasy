@@ -15,22 +15,20 @@ type RoleFilter = PlayerRole | "ALL";
 
 const ROLES: RoleFilter[] = ["ALL", "WK", "BAT", "AR", "BOWL"];
 
-const ROLE_LABELS: Record<string, string> = {
-  ALL: "All", WK: "WK", BAT: "BAT", AR: "AR", BOWL: "BOWL"
+// Dream11 role badge colors
+const ROLE_BADGE: Record<PlayerRole, { bg: string; color: string }> = {
+  WK:   { bg: "#ffd900", color: "#000" },
+  BAT:  { bg: "#4fc3f7", color: "#000" },
+  AR:   { bg: "#66bb6a", color: "#000" },
+  BOWL: { bg: "#ef5350", color: "#fff" },
 };
 
-const ROLE_COLOR: Record<PlayerRole, string> = {
-  WK:   "text-purple-400",
-  BAT:  "text-blue-400",
-  AR:   "text-green-400",
-  BOWL: "text-orange-400",
-};
-
-const ROLE_BG: Record<PlayerRole, string> = {
-  WK:   "bg-purple-500/15 border-purple-500/40",
-  BAT:  "bg-blue-500/15 border-blue-500/40",
-  AR:   "bg-green-500/15 border-green-500/40",
-  BOWL: "bg-orange-500/15 border-orange-500/40",
+const ROLE_ACTIVE: Record<RoleFilter, string> = {
+  ALL:  "#e53935",
+  WK:   "#ffd900",
+  BAT:  "#4fc3f7",
+  AR:   "#66bb6a",
+  BOWL: "#ef5350",
 };
 
 function initials(name: string) {
@@ -66,7 +64,6 @@ export default function PlayerSelector({
   const [search, setSearch] = useState("");
 
   const store = useTeamBuilderStore();
-  // NOTE: selectedPlayers is a function in the store
   const selectedPlayers = store.selectedPlayers();
   const selectedIds = useMemo(() => new Set(selectedPlayers.map((p) => p.id)), [selectedPlayers]);
   const credits = store.totalCredits();
@@ -93,7 +90,6 @@ export default function PlayerSelector({
     });
 
     list.sort((a, b) => {
-      // Selected float to top
       const aS = selectedIds.has(a.id) ? 0 : 1;
       const bS = selectedIds.has(b.id) ? 0 : 1;
       if (aS !== bS) return aS - bS;
@@ -104,53 +100,66 @@ export default function PlayerSelector({
         case "sel_desc":     return (b.selection_pct ?? 0) - (a.selection_pct ?? 0);
       }
     });
-
     return list;
   }, [players, role, teamFilter, search, sort, selectedIds, teamHome, teamAway]);
 
-  // Count XI status
   const xiSynced = players.some((p) => p.is_playing_xi !== undefined);
   const playingCount = players.filter((p) => p.is_playing_xi === true).length;
+  const activeColor = ROLE_ACTIVE[role];
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0f]">
-      {/* XI status bar */}
+    <div className="flex flex-col" style={{ background: "#000" }}>
+      {/* XI confirmed bar */}
       {xiSynced && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border-b border-green-500/20">
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" />
-          <p className="text-green-400 text-xs font-semibold">Playing XI confirmed · {playingCount} players</p>
+        <div className="flex items-center gap-2 px-4 py-2 border-b"
+          style={{ background: "rgba(34,197,94,0.08)", borderColor: "rgba(34,197,94,0.15)" }}>
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shrink-0" />
+          <p className="text-green-400 text-xs font-bold">
+            Playing XI confirmed · {playingCount} players announced
+          </p>
         </div>
       )}
 
-      {/* Filters row */}
-      <div className="px-4 pt-3 space-y-2.5">
+      {/* Filters */}
+      <div className="px-4 pt-3 space-y-2.5 pb-1">
         {/* Search */}
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" width="14" height="14"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
           </svg>
           <input
-            type="search" placeholder="Search player…"
-            value={search} onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-surface-elevated border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-brand"
+            type="search"
+            placeholder="Search player…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 text-white text-sm rounded-xl focus:outline-none"
+            style={{ background: "#1a1a1a", border: "1px solid #2a2a2a" }}
           />
         </div>
 
         {/* Role tabs */}
-        <div className="flex gap-1.5">
+        <div className="flex gap-1">
           {ROLES.map((r) => {
-            const count = r === "ALL" ? selectedPlayers.length : selectedPlayers.filter((p) => p.role === r).length;
+            const roleCount = r === "ALL"
+              ? selectedPlayers.length
+              : selectedPlayers.filter((p) => p.role === r).length;
+            const isActive = role === r;
+            const color = ROLE_ACTIVE[r];
             return (
-              <button key={r} onClick={() => setRole(r)}
-                className={cn(
-                  "flex-1 py-1.5 rounded-lg text-xs font-bold transition border",
-                  role === r
-                    ? "bg-brand border-brand text-white"
-                    : "border-slate-700 text-slate-400 bg-surface-elevated hover:border-slate-500"
-                )}>
-                {ROLE_LABELS[r]}
-                {r !== "ALL" && count > 0 && (
-                  <span className={cn("ml-0.5", role === r ? "text-white/70" : "text-brand")}>({count})</span>
+              <button
+                key={r}
+                onClick={() => setRole(r)}
+                className="flex-1 py-1.5 rounded-lg text-[11px] font-black transition"
+                style={{
+                  background: isActive ? color : "rgba(255,255,255,0.05)",
+                  color: isActive ? (r === "WK" || r === "BAT" || r === "AR" ? "#000" : "white") : "rgba(255,255,255,0.40)",
+                  border: `1px solid ${isActive ? color : "rgba(255,255,255,0.08)"}`,
+                }}
+              >
+                {r}
+                {r !== "ALL" && roleCount > 0 && (
+                  <span className="ml-0.5 opacity-70">({roleCount})</span>
                 )}
               </button>
             );
@@ -159,19 +168,27 @@ export default function PlayerSelector({
 
         {/* Team filter + sort */}
         <div className="flex gap-2">
-          <div className="flex rounded-xl overflow-hidden border border-slate-700 shrink-0 text-xs">
+          <div className="flex rounded-xl overflow-hidden shrink-0" style={{ border: "1px solid #2a2a2a" }}>
             {(["both", "home", "away"] as const).map((t) => (
-              <button key={t} onClick={() => setTeamFilter(t)}
-                className={cn(
-                  "px-2.5 py-1.5 font-semibold transition",
-                  teamFilter === t ? "bg-brand text-white" : "bg-surface-elevated text-slate-400"
-                )}>
+              <button
+                key={t}
+                onClick={() => setTeamFilter(t)}
+                className="px-2.5 py-1.5 text-xs font-bold transition"
+                style={{
+                  background: teamFilter === t ? "#e53935" : "#1a1a1a",
+                  color: teamFilter === t ? "white" : "rgba(255,255,255,0.40)",
+                }}
+              >
                 {t === "both" ? "All" : t === "home" ? homeShort : awayShort}
               </button>
             ))}
           </div>
-          <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}
-            className="flex-1 bg-surface-elevated border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-brand">
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="flex-1 px-2.5 py-1.5 text-xs text-white/60 rounded-xl focus:outline-none"
+            style={{ background: "#1a1a1a", border: "1px solid #2a2a2a" }}
+          >
             <option value="credits_desc">Credits ↓</option>
             <option value="credits_asc">Credits ↑</option>
             <option value="points_desc">Points ↓</option>
@@ -181,7 +198,10 @@ export default function PlayerSelector({
       </div>
 
       {/* Column headers */}
-      <div className="grid grid-cols-[1fr_40px_40px_40px_36px] px-4 pt-2.5 pb-1 text-[9px] text-slate-600 font-bold uppercase tracking-wider border-b border-slate-800">
+      <div
+        className="grid grid-cols-[1fr_36px_38px_36px_36px] px-4 pt-2 pb-1.5 text-[9px] font-black uppercase tracking-wider border-b border-t"
+        style={{ color: "rgba(255,255,255,0.30)", borderColor: "#1a1a1a" }}
+      >
         <span>Player</span>
         <span className="text-right">Pts</span>
         <span className="text-right">Sel%</span>
@@ -190,9 +210,9 @@ export default function PlayerSelector({
       </div>
 
       {/* Player list */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-800/50">
+      <div className="divide-y divide-[#111]">
         {filtered.length === 0 && (
-          <div className="py-12 text-center text-slate-500 text-sm">No players found</div>
+          <div className="py-12 text-center text-white/30 text-sm">No players found</div>
         )}
         {filtered.map((p) => {
           const isSelected = selectedIds.has(p.id);
@@ -201,28 +221,39 @@ export default function PlayerSelector({
           const lastPts = p.last_points ?? null;
           const teamShort = shortTeamName(p.ipl_team);
           const xiStatus = p.is_playing_xi;
+          const badge = ROLE_BADGE[p.role];
 
           return (
-            <div key={p.id}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 transition-colors",
-                isSelected ? "bg-brand/5" : "hover:bg-slate-800/30"
-              )}>
+            <div
+              key={p.id}
+              className="flex items-center gap-3 px-4 py-3"
+              style={{
+                background: isSelected ? "rgba(229,57,53,0.06)" : "transparent",
+                borderLeft: isSelected ? "3px solid #e53935" : "3px solid transparent",
+              }}
+            >
               {/* Avatar */}
               <div className="relative shrink-0">
-                <div className={cn(
-                  "w-11 h-11 rounded-full flex items-center justify-center text-xs font-black border-2 overflow-hidden",
-                  isSelected ? "border-brand" : "border-slate-700 bg-[#1a2235]"
-                )}>
+                <div
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-black overflow-hidden"
+                  style={{
+                    border: `2px solid ${isSelected ? "#e53935" : "#2a2a2a"}`,
+                    background: isSelected ? "rgba(229,57,53,0.15)" : "#1a1a1a",
+                    color: isSelected ? "#e53935" : "rgba(255,255,255,0.60)",
+                  }}
+                >
                   {p.photo_url
                     ? <img src={p.photo_url} alt={p.name} className="w-full h-full object-cover" />
-                    : <span className={isSelected ? "text-brand" : "text-slate-400"}>{initials(p.name)}</span>
+                    : initials(p.name)
                   }
                 </div>
                 {isSelected && (
-                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-brand border border-[#0a0a0f] flex items-center justify-center">
+                  <div
+                    className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center"
+                    style={{ background: "#e53935", border: "1.5px solid #000" }}
+                  >
                     <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
-                      <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="2" strokeLinecap="round" />
                     </svg>
                   </div>
                 )}
@@ -231,20 +262,29 @@ export default function PlayerSelector({
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  <p className={cn("text-sm font-bold truncate", isSelected ? "text-white" : "text-white")}>{p.name}</p>
-                  <span className={cn("text-[8px] px-1 py-0 rounded font-black border shrink-0", ROLE_BG[p.role], ROLE_COLOR[p.role])}>
+                  <p className="text-sm font-bold text-white truncate">{p.name}</p>
+                  <span
+                    className="text-[9px] px-1.5 py-0 rounded font-black shrink-0"
+                    style={{ background: badge.bg, color: badge.color }}
+                  >
                     {p.role}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-slate-400 text-xs">{teamShort}</span>
+                  <span className="text-white/40 text-xs">{teamShort}</span>
                   {xiStatus === true && (
-                    <span className="text-[9px] bg-green-500/20 border border-green-500/40 text-green-400 px-1.5 py-0 rounded font-bold">
+                    <span
+                      className="text-[9px] px-1.5 py-0 rounded font-bold"
+                      style={{ background: "rgba(34,197,94,0.15)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.25)" }}
+                    >
                       PLAYING
                     </span>
                   )}
                   {xiStatus === false && (
-                    <span className="text-[9px] bg-red-500/15 border border-red-500/30 text-red-400 px-1.5 py-0 rounded font-bold">
+                    <span
+                      className="text-[9px] px-1.5 py-0 rounded font-bold"
+                      style={{ background: "rgba(229,57,53,0.12)", color: "#f87171", border: "1px solid rgba(229,57,53,0.20)" }}
+                    >
                       BENCH
                     </span>
                   )}
@@ -252,33 +292,43 @@ export default function PlayerSelector({
               </div>
 
               {/* Stats */}
-              <span className="text-slate-300 text-xs font-medium w-10 text-right shrink-0 tabular-nums">
+              <span className="text-white/50 text-xs font-medium w-9 text-right shrink-0 tabular-nums">
                 {lastPts !== null ? lastPts : "—"}
               </span>
-              <span className={cn(
-                "text-xs font-medium w-10 text-right shrink-0 tabular-nums",
-                selPct !== null && selPct >= 70 ? "text-red-400" :
-                selPct !== null && selPct >= 40 ? "text-yellow-400" :
-                "text-slate-400"
-              )}>
+              <span
+                className="text-xs font-medium w-10 text-right shrink-0 tabular-nums"
+                style={{
+                  color: selPct !== null && selPct >= 70 ? "#f87171"
+                    : selPct !== null && selPct >= 40 ? "#fbbf24"
+                    : "rgba(255,255,255,0.40)",
+                }}
+              >
                 {selPct !== null ? `${selPct}%` : "—"}
               </span>
-              <span className="text-white text-xs font-bold w-10 text-right shrink-0 tabular-nums">
+              <span className="text-white text-xs font-bold w-9 text-right shrink-0 tabular-nums">
                 {p.credit_value}
               </span>
 
-              {/* Add/Remove */}
+              {/* Add/Remove button */}
               <button
                 onClick={() => isSelected ? store.removePlayer(p.id) : store.addPlayer(p)}
                 disabled={!isSelected && !addable}
-                className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center font-black text-lg transition shrink-0 border-2",
-                  isSelected
-                    ? "bg-red-500/10 border-red-500/60 text-red-400"
+                className="w-8 h-8 rounded-full flex items-center justify-center font-black text-lg transition shrink-0"
+                style={{
+                  border: isSelected
+                    ? "2px solid rgba(229,57,53,0.60)"
                     : addable
-                    ? "bg-brand/10 border-brand/60 text-brand hover:bg-brand/20"
-                    : "bg-transparent border-slate-700 text-slate-600 cursor-not-allowed"
-                )}>
+                    ? "2px solid rgba(229,57,53,0.50)"
+                    : "2px solid rgba(255,255,255,0.10)",
+                  background: isSelected
+                    ? "rgba(229,57,53,0.15)"
+                    : addable
+                    ? "rgba(229,57,53,0.08)"
+                    : "transparent",
+                  color: isSelected ? "#f87171" : addable ? "#e53935" : "rgba(255,255,255,0.20)",
+                  cursor: !isSelected && !addable ? "not-allowed" : "pointer",
+                }}
+              >
                 {isSelected ? "−" : "+"}
               </button>
             </div>
@@ -287,9 +337,14 @@ export default function PlayerSelector({
       </div>
 
       {/* Footer count */}
-      <div className="px-4 py-2 bg-[#111117] border-t border-slate-800 flex items-center justify-between">
-        <span className="text-slate-500 text-xs">{selectedPlayers.length}/11 selected</span>
-        <span className="text-slate-500 text-xs">{filtered.length} players</span>
+      <div
+        className="sticky bottom-0 px-4 py-2 flex items-center justify-between border-t"
+        style={{ background: "#0d0d0d", borderColor: "#1a1a1a" }}
+      >
+        <span className="text-white/30 text-xs">
+          <span className="text-white font-bold">{selectedPlayers.length}</span>/11 selected
+        </span>
+        <span className="text-white/30 text-xs">{filtered.length} players</span>
       </div>
     </div>
   );
