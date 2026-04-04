@@ -109,9 +109,22 @@ Deno.serve(async () => {
   const start = Date.now();
 
   try {
+    // Guard: only run during evening IPL match window (14:00–18:30 UTC = 7:30 PM–midnight IST)
+    // Afternoon matches (3:30 PM IST) are rare; conservative guard prevents burning RapidAPI
+    // credits if someone forgets to manually close a live match.
+    const nowUTC = new Date();
+    const utcMinutes = nowUTC.getUTCHours() * 60 + nowUTC.getUTCMinutes();
+    const WINDOW_START = 14 * 60;      // 14:00 UTC = 7:30 PM IST
+    const WINDOW_END   = 18 * 60 + 30; // 18:30 UTC = 00:00 IST (T20 + 1hr buffer)
+    if (utcMinutes < WINDOW_START || utcMinutes > WINDOW_END) {
+      return new Response(JSON.stringify({ ok: true, message: "Outside IPL match hours (7:30 PM–midnight IST), skipping" }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const { data: liveMatches } = await supabase
       .from("f11_matches")
-      .select("id, cricapi_match_id")
+      .select("id, cricapi_match_id, scheduled_at")
       .eq("status", "live");
 
     if (!liveMatches?.length) {
@@ -121,6 +134,22 @@ Deno.serve(async () => {
     }
 
     for (const match of liveMatches) {
+      // Staleness guard: if a match has been "live" for more than 5.5 hours since
+      // its scheduled_at, auto-transition to "in_review" to protect RapidAPI credits.
+      // Admin can review + finalize or reopen as needed.
+      if (match.scheduled_at) {
+        const scheduledMs = new Date(match.scheduled_at).getTime();
+        const elapsedHours = (Date.now() - scheduledMs) / 3_600_000;
+        if (elapsedHours > 5.5) {
+          await supabase
+            .from("f11_matches")
+            .update({ status: "in_review" })
+            .eq("id", match.id)
+            .eq("status", "live");
+          continue; // skip API call for this match
+        }
+      }
+
       if (!match.cricapi_match_id) continue;
 
       const res = await fetch(

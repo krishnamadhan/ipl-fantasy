@@ -212,12 +212,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "RAPIDAPI_KEY not set" }, { status: 500 });
   }
 
+  // Time guard: only run during evening IPL match window (14:00–18:30 UTC = 7:30 PM–midnight IST)
+  // Prevents burning RapidAPI credits outside match windows.
+  const nowUTC = new Date();
+  const utcMinutes = nowUTC.getUTCHours() * 60 + nowUTC.getUTCMinutes();
+  const WINDOW_START = 14 * 60;      // 14:00 UTC = 7:30 PM IST
+  const WINDOW_END   = 18 * 60 + 30; // 18:30 UTC = midnight IST
+  if (utcMinutes < WINDOW_START || utcMinutes > WINDOW_END) {
+    return NextResponse.json({ ok: true, message: "Outside IPL match hours (7:30 PM–midnight IST), skipping", synced: 0 });
+  }
+
   const admin = await createServiceClient();
 
   // 1. Get all live matches that aren't paused
   const { data: liveMatches } = await admin
     .from("f11_matches")
-    .select("id, cricapi_match_id, team_home, team_away")
+    .select("id, cricapi_match_id, team_home, team_away, scheduled_at")
     .eq("status", "live")
     .eq("is_scoring_paused", false);
 
@@ -229,6 +239,20 @@ export async function GET(req: NextRequest) {
 
   for (const match of liveMatches) {
     try {
+      // Staleness guard: auto-transition to in_review if match has been "live"
+      // for more than 5.5 hours — protects credits if admin forgets to close it.
+      if (match.scheduled_at) {
+        const elapsedHours = (Date.now() - new Date(match.scheduled_at).getTime()) / 3_600_000;
+        if (elapsedHours > 5.5) {
+          await admin.from("f11_matches")
+            .update({ status: "in_review" })
+            .eq("id", match.id)
+            .eq("status", "live");
+          results.push({ matchId: match.id, skipped: "stale — auto-moved to in_review", elapsedHours: elapsedHours.toFixed(1) });
+          continue;
+        }
+      }
+
       if (!match.cricapi_match_id) {
         results.push({ matchId: match.id, skipped: "no cricbuzz ID" });
         continue;
