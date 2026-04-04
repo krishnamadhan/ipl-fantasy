@@ -73,7 +73,7 @@ export default function TeamBuilderClient({
       if (!res.ok) throw new Error(data.error);
       store.loadDraft(activeIndex, { savedTeamId: data.team.id });
       toast.success("Team saved!");
-      setTimeout(() => router.push(`/contests/browse/${match.id}`), 800);
+      setTimeout(() => { window.location.href = `/contests/browse/${match.id}`; }, 800);
     } catch (err: any) {
       toast.error(err.message);
     } finally {

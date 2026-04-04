@@ -122,7 +122,7 @@ export async function POST() {
 
     for (const sq of squads) {
       // Filter to T20/IPL squads (skip tour squads, women's, etc.)
-      const sqName = (sq.squadName ?? sq.teamName ?? sq.name ?? "").toLowerCase();
+      const sqName = (sq.squadName ?? sq.teamName ?? sq.name ?? sq.team?.name ?? "").toLowerCase();
       if (sqName.includes("women") || sqName.includes("tour")) continue;
 
       if (!sq.squadId) continue;
@@ -130,8 +130,13 @@ export async function POST() {
       const squadData = await cbGet(`/series/v1/${seriesId}/squads/${sq.squadId}`);
       if (!squadData) continue;
 
-      // squadName may be undefined for some squad objects — fall back to other common fields
-      const rawName: string = sq.squadName ?? sq.teamName ?? sq.name ?? "";
+      // Cricbuzz stores the team name in squadType (e.g. "Chennai Super Kings")
+      const rawName: string =
+        sq.squadName ?? sq.teamName ?? sq.name ??
+        sq.team?.name ?? sq.team?.teamName ?? sq.team?.teamSName ??
+        squadData?.team?.name ?? squadData?.team?.teamName ??
+        squadData?.teamName ?? squadData?.teamSName ??
+        sq.squadType ?? "";
       const teamName = rawName.replace(/ squad$/i, "").replace(/ ipl.*$/i, "").trim() || `Squad ${sq.squadId}`;
       const players = extractPlayers(squadData);
 

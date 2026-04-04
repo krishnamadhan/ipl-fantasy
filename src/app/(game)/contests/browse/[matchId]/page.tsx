@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { formatCurrency, shortTeam } from "@/lib/utils/format";
 import ContestBrowseClient from "./ContestBrowseClient";
 
-export const revalidate = 10;
+export const dynamic = "force-dynamic";
 
 export default async function BrowseContestsPage({ params }: { params: Promise<{ matchId: string }> }) {
   const { matchId } = await params;
@@ -21,7 +21,7 @@ export default async function BrowseContestsPage({ params }: { params: Promise<{
       .order("entry_fee", { ascending: true }),
     supabase
       .from("f11_teams")
-      .select("id, team_name, captain_id, vc_id, player_ids, captain:f11_players!captain_id(name), vc:f11_players!vc_id(name)")
+      .select("id, team_name, captain_id, vc_id, player_ids")
       .eq("user_id", user.id)
       .eq("match_id", matchId)
       .order("created_at", { ascending: true }),
@@ -34,7 +34,19 @@ export default async function BrowseContestsPage({ params }: { params: Promise<{
     ...c,
     entry_count: c.entry_count?.[0]?.count ?? 0,
   }));
-  const myTeams = teamsRes.data ?? [];
+  const rawTeams = teamsRes.data ?? [];
+
+  // Fetch captain/vc names separately (no FK constraint on these columns)
+  const playerIds = [...new Set(rawTeams.flatMap((t: any) => [t.captain_id, t.vc_id]).filter(Boolean))];
+  const { data: playerNames } = playerIds.length > 0
+    ? await supabase.from("f11_players").select("id, name").in("id", playerIds)
+    : { data: [] };
+  const playerMap = Object.fromEntries((playerNames ?? []).map((p: any) => [p.id, p]));
+  const myTeams = rawTeams.map((t: any) => ({
+    ...t,
+    captain: playerMap[t.captain_id] ?? null,
+    vc: playerMap[t.vc_id] ?? null,
+  }));
 
   return (
     <ContestBrowseClient

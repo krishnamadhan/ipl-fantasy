@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("f11_teams")
-    .select("*, captain:f11_players!captain_id(name), vc:f11_players!vc_id(name)")
+    .select("*")
     .eq("user_id", user.id)
     .eq("match_id", matchId)
     .order("created_at", { ascending: true });

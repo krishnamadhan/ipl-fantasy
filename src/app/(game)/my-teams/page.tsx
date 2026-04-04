@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { shortTeam, TEAM_COLORS, cn } from "@/lib/utils/format";
 
-export const revalidate = 20;
+export const dynamic = "force-dynamic";
 
 export default async function MyTeamsPage() {
   const supabase = await createClient();
@@ -14,16 +14,29 @@ export default async function MyTeamsPage() {
     .from("f11_teams")
     .select(`
       id, team_name, player_ids, captain_id, vc_id, created_at,
-      captain:f11_players!captain_id(name, role, ipl_team),
-      vc:f11_players!vc_id(name, role, ipl_team),
       match:f11_matches(id, team_home, team_away, scheduled_at, status)
     `)
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
+  // Fetch captain/vc player info separately (no FK constraints on these columns)
+  const allCapVcIds = [...new Set(
+    (teams ?? []).flatMap((t: any) => [t.captain_id, t.vc_id]).filter(Boolean)
+  )];
+  const { data: capVcPlayers } = allCapVcIds.length > 0
+    ? await supabase.from("f11_players").select("id, name, role, ipl_team").in("id", allCapVcIds)
+    : { data: [] };
+  const playerMap = Object.fromEntries((capVcPlayers ?? []).map((p: any) => [p.id, p]));
+
+  const teamsWithPlayers = (teams ?? []).map((t: any) => ({
+    ...t,
+    captain: playerMap[t.captain_id] ?? null,
+    vc: playerMap[t.vc_id] ?? null,
+  }));
+
   // Group by match
   const matchMap = new Map<string, { match: any; teams: any[] }>();
-  for (const t of teams ?? []) {
+  for (const t of teamsWithPlayers) {
     const m = Array.isArray(t.match) ? (t.match as any[])[0] : t.match;
     if (!m) continue;
     if (!matchMap.has(m.id)) matchMap.set(m.id, { match: m, teams: [] });

@@ -386,7 +386,7 @@ export default function ContestBrowseClient({
 
       {/* ── Join bottom sheet ── */}
       {joiningContestId && (
-        <div className="fixed inset-0 z-50 flex items-end" onClick={() => setJoiningContestId(null)}>
+        <div className="fixed inset-0 z-[60] flex items-end" onClick={() => setJoiningContestId(null)}>
           <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" />
           <div
             className="relative w-full max-w-lg mx-auto rounded-t-3xl border-t border-white/10 p-5 space-y-4"
