@@ -114,7 +114,7 @@ export async function POST() {
   // ── STRATEGY 1: Series squads endpoint ──────────────────────────────────
   // This is the best source — has roles for all IPL players even before match day
   const squadList = await cbGet(`/series/v1/${seriesId}/squads`);
-  const squads: Array<{ squadId: number; squadName: string; teamId?: number }> =
+  const squads: Array<{ squadId?: number; squadName?: string; teamName?: string; name?: string; squadType?: string; teamId?: number; isHeader?: boolean; team?: { name?: string; teamName?: string; teamSName?: string } }> =
     squadList?.squads ?? squadList?.squad ?? [];
 
   if (squads.length > 0) {
