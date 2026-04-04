@@ -32,7 +32,11 @@ export default function AdminMatchActions({ match }: { match: any }) {
         <Btn label="Sync Playing XI" loading={loading === "xi"}
           onClick={() => act("xi", `/api/admin/matches/${id}/sync-playing-xi`)} />
       )}
-      {match.status === "locked" && (
+      {match.status === "open" && (
+        <Btn label="Lock 🔒" loading={loading === "lock"}
+          onClick={() => act("lock", `/api/admin/matches/${id}/lock`)} />
+      )}
+      {(match.status === "locked" || match.status === "open") && (
         <Btn label="Go Live 🔴" loading={loading === "live"}
           onClick={() => {
             if (!confirm("Start live scoring? Teams will be locked.")) return;
