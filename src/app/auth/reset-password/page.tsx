@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
@@ -7,16 +7,8 @@ import toast, { Toaster } from "react-hot-toast";
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [ready, setReady] = useState(false);
   const supabase = createClient();
   const router = useRouter();
-
-  useEffect(() => {
-    // Supabase puts the session from the recovery link into the URL hash
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") setReady(true);
-    });
-  }, [supabase]);
 
   async function handleReset(e: React.FormEvent) {
     e.preventDefault();
@@ -26,8 +18,8 @@ export default function ResetPasswordPage() {
     setLoading(false);
     if (error) toast.error(error.message);
     else {
-      toast.success("Password updated! Redirecting…");
-      setTimeout(() => router.push("/dashboard"), 1500);
+      toast.success("Password updated!");
+      setTimeout(() => router.push("/dashboard"), 1200);
     }
   }
 
@@ -47,32 +39,33 @@ export default function ResetPasswordPage() {
 
         <div className="rounded-3xl p-6 border shadow-2xl"
           style={{ background: "#111827", borderColor: "rgba(255,255,255,0.07)" }}>
-          {!ready ? (
-            <p className="text-slate-400 text-sm text-center">Loading recovery link…</p>
-          ) : (
-            <form onSubmit={handleReset} className="space-y-4">
-              <div>
-                <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-                  New Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl px-4 py-3.5 text-white text-sm placeholder-slate-600 focus:outline-none transition"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }}
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                />
-              </div>
-              <button type="submit" disabled={loading}
-                className="w-full text-white font-black py-4 rounded-2xl transition disabled:opacity-50 text-base shadow-lg"
-                style={{ background: loading ? "#6B7280" : "linear-gradient(135deg, #F5A623, #E8950F)" }}>
-                {loading ? "Updating…" : "Update Password →"}
-              </button>
-            </form>
-          )}
+          <form onSubmit={handleReset} className="space-y-4">
+            <div>
+              <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
+                New Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-xl px-4 py-3.5 text-white text-sm placeholder-slate-600 focus:outline-none transition"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }}
+                onFocus={(e) => (e.target.style.borderColor = "rgba(245,166,35,0.50)")}
+                onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.10)")}
+                placeholder="••••••••"
+                required
+                minLength={6}
+              />
+            </div>
+            <button type="submit" disabled={loading}
+              className="w-full text-white font-black py-4 rounded-2xl transition disabled:opacity-50 text-base shadow-lg"
+              style={{
+                background: loading ? "#6B7280" : "linear-gradient(135deg, #F5A623, #E8950F)",
+                boxShadow: loading ? "none" : "0 4px 16px rgba(245,166,35,0.35)",
+              }}>
+              {loading ? "Updating…" : "Update Password →"}
+            </button>
+          </form>
         </div>
       </div>
     </div>
