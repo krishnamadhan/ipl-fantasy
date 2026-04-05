@@ -243,12 +243,13 @@ export async function GET(req: NextRequest) {
 
   // Time guard: only run during IPL match windows (10:00–18:30 UTC = 3:30 PM–midnight IST)
   // Covers both slots: afternoon (3:30 PM IST) and evening (7:30 PM IST).
-  // Staleness check handles the "forgot to close" case inside the window.
+  // Bypass for manual POST triggers from the admin panel (method will be "POST").
+  const isManual = req.method === "POST";
   const nowUTC = new Date();
   const utcMinutes = nowUTC.getUTCHours() * 60 + nowUTC.getUTCMinutes();
   const WINDOW_START = 10 * 60;      // 10:00 UTC = 3:30 PM IST
   const WINDOW_END   = 18 * 60 + 30; // 18:30 UTC = midnight IST
-  if (utcMinutes < WINDOW_START || utcMinutes > WINDOW_END) {
+  if (!isManual && (utcMinutes < WINDOW_START || utcMinutes > WINDOW_END)) {
     return NextResponse.json({ ok: true, message: "Outside IPL match hours (3:30 PM–midnight IST), skipping", synced: 0 });
   }
 

@@ -77,6 +77,32 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── 1c. AUTO-STALE: locked matches >6h past scheduled time → in_review ──────
+  // If admin forgot to click "Go Live" and the match window has passed,
+  // move directly to in_review so admin can finalize (no live scoring, just settle points).
+  const staleThreshold = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+  const staleMovedToReview: string[] = [];
+
+  const { data: staleLocked } = await admin
+    .from("f11_matches")
+    .select("id, team_home, team_away")
+    .eq("status", "locked")
+    .lt("scheduled_at", staleThreshold);
+
+  for (const m of staleLocked ?? []) {
+    const { error } = await admin
+      .from("f11_matches")
+      .update({ status: "in_review" })
+      .eq("id", m.id)
+      .eq("status", "locked");
+
+    if (error) {
+      errors.push(`stale-locked ${m.id}: ${error.message}`);
+    } else {
+      staleMovedToReview.push(`${m.team_home} vs ${m.team_away}`);
+    }
+  }
+
   // ── 2. AUTO-LOCK: open matches whose start time has passed ───────────────
   // Transitions open → locked (teams frozen). Admin must manually click "Go Live".
   const { data: toLock } = await admin
@@ -110,6 +136,7 @@ export async function GET(req: NextRequest) {
     ok: true,
     opened,
     locked,
+    movedToReview: staleMovedToReview.length ? staleMovedToReview : undefined,
     errors: errors.length ? errors : undefined,
     checkedAt: now,
   });
