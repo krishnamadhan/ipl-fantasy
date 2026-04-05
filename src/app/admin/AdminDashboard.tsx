@@ -112,7 +112,8 @@ export default function AdminDashboard({
                 const msg = [
                   d.opened?.length && `Opened: ${d.opened.join(", ")}`,
                   d.locked?.length && `Locked: ${d.locked.join(", ")}`,
-                  !d.opened?.length && !d.locked?.length && "Nothing to update",
+                  d.movedToReview?.length && `→ Review: ${d.movedToReview.join(", ")}`,
+                  !d.opened?.length && !d.locked?.length && !d.movedToReview?.length && "Nothing to update",
                 ].filter(Boolean).join(" · ");
                 toast.success(msg);
               } else toast.error(d.error ?? "Failed");
