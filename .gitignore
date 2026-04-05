@@ -28,3 +28,5 @@ yarn-error.log*
 # archives
 src.zip
 .vercel
+.e2e*
+e2e-*
