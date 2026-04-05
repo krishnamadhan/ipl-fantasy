@@ -25,6 +25,17 @@ export default function LoginPage() {
     }
   }
 
+  async function handleForgotPassword() {
+    if (!email) { toast.error("Enter your email first"); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    setLoading(false);
+    if (error) toast.error(error.message);
+    else toast.success("Password reset email sent — check your inbox");
+  }
+
   async function handleGoogle() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -99,6 +110,13 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 required
               />
+            </div>
+
+            <div className="text-right -mt-2">
+              <button type="button" onClick={handleForgotPassword}
+                className="text-slate-500 text-xs hover:text-slate-300 transition">
+                Forgot password?
+              </button>
             </div>
 
             <button
