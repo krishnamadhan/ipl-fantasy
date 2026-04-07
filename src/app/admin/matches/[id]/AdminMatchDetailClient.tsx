@@ -104,11 +104,11 @@ export default function AdminMatchDetailClient({
             <ActionBtn label="Open Lineups" color="brand" loading={loading === "lock"}
               onClick={() => action("lock", async () => { await post(`/api/admin/matches/${id}/lock`); toast.success("Lineups open!"); })} />
           )}
-          {(match.status === "open" || match.status === "locked") && (
+          {(match.status === "open" || match.status === "locked" || match.status === "live") && (
             <ActionBtn label="Sync Playing XI" color="blue" loading={loading === "xi"}
               onClick={() => action("xi", async () => {
                 const d = await post(`/api/admin/matches/${id}/sync-playing-xi`);
-                toast.success(`${d.playingCount} players confirmed`);
+                toast.success(`${d.playingCount} players confirmed (${d.source})`);
               })} />
           )}
           {match.status === "locked" && (

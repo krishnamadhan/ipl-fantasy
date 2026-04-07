@@ -20,7 +20,7 @@ export default async function MatchesPage() {
 
   const { data: matches } = await supabase
     .from("f11_matches")
-    .select("id, team_home, team_away, venue, city, scheduled_at, status, result_summary")
+    .select("id, team_home, team_away, venue, city, scheduled_at, status, result_summary, live_score_summary")
     .order("scheduled_at", { ascending: true })
     .limit(30);
 
@@ -131,7 +131,28 @@ export default async function MatchesPage() {
 
                       <div className="px-3 text-center shrink-0">
                         {isLive ? (
-                          <p className="text-red-400 font-black text-sm animate-pulse">LIVE</p>
+                          (() => {
+                            const ls = (m as any).live_score_summary as any;
+                            return (
+                              <div>
+                                <p className="text-red-400 font-black text-[10px] animate-pulse mb-1">● LIVE</p>
+                                {ls ? (
+                                  <div className="text-[10px] space-y-0.5">
+                                    <p className="text-white font-bold">{ls.team1_runs}/{ls.team1_wickets}</p>
+                                    <p className="text-slate-500">({ls.team1_overs} ov)</p>
+                                    {ls.team2_runs > 0 && (
+                                      <>
+                                        <p className="text-slate-400">{ls.team2_runs}/{ls.team2_wickets}</p>
+                                        <p className="text-slate-600">({ls.team2_overs} ov)</p>
+                                      </>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="text-slate-600 text-[10px]">Syncing…</p>
+                                )}
+                              </div>
+                            );
+                          })()
                         ) : (
                           <>
                             <p className="text-slate-600 text-[10px] font-bold mb-0.5">VS</p>

@@ -24,7 +24,7 @@ export default async function DashboardPage() {
       .single(),
     supabase
       .from("f11_matches")
-      .select("id, team_home, team_away, venue, city, scheduled_at, status")
+      .select("id, team_home, team_away, venue, city, scheduled_at, status, live_score_summary")
       .in("status", ["open", "locked", "scheduled", "live"])
       .gt("scheduled_at", new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
       .order("scheduled_at", { ascending: true })
@@ -83,27 +83,48 @@ export default async function DashboardPage() {
           {liveMatches.map((m) => {
             const hc = teamColor(m.team_home);
             const ac = teamColor(m.team_away);
+            const ls = m.live_score_summary as any;
             return (
               <Link key={m.id} href={`/matches/${m.id}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-red-500/5 transition">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-7 h-7 rounded-full border flex items-center justify-center text-[9px] font-black"
-                      style={{ borderColor: hc, background: hc + "33", color: hc }}>
-                      {shortTeam(m.team_home).slice(0, 2)}
+                className="block px-4 py-3 hover:bg-red-500/5 transition">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-7 h-7 rounded-full border flex items-center justify-center text-[9px] font-black"
+                        style={{ borderColor: hc, background: hc + "33", color: hc }}>
+                        {shortTeam(m.team_home).slice(0, 2)}
+                      </div>
+                      <span className="text-white font-black text-sm">{shortTeam(m.team_home)}</span>
                     </div>
-                    <span className="text-white font-black text-sm">{shortTeam(m.team_home)}</span>
-                  </div>
-                  <span className="text-slate-600 text-xs">vs</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-white font-black text-sm">{shortTeam(m.team_away)}</span>
-                    <div className="w-7 h-7 rounded-full border flex items-center justify-center text-[9px] font-black"
-                      style={{ borderColor: ac, background: ac + "33", color: ac }}>
-                      {shortTeam(m.team_away).slice(0, 2)}
+                    <span className="text-slate-600 text-xs">vs</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-white font-black text-sm">{shortTeam(m.team_away)}</span>
+                      <div className="w-7 h-7 rounded-full border flex items-center justify-center text-[9px] font-black"
+                        style={{ borderColor: ac, background: ac + "33", color: ac }}>
+                        {shortTeam(m.team_away).slice(0, 2)}
+                      </div>
                     </div>
                   </div>
+                  <span className="text-red-400 text-sm font-black">Watch →</span>
                 </div>
-                <span className="text-red-400 text-sm font-black">Watch →</span>
+                {ls && (
+                  <div className="mt-1.5 flex items-center gap-3 text-[11px]">
+                    <span className="text-white font-bold">
+                      {ls.team1_runs}/{ls.team1_wickets} <span className="text-slate-500 font-normal">({ls.team1_overs} ov)</span>
+                    </span>
+                    {ls.team2_runs > 0 && (
+                      <>
+                        <span className="text-slate-700">·</span>
+                        <span className="text-slate-300">
+                          {ls.team2_runs}/{ls.team2_wickets} <span className="text-slate-500">({ls.team2_overs} ov)</span>
+                        </span>
+                      </>
+                    )}
+                    {ls.situation && (
+                      <span className="text-amber-400 truncate max-w-[140px]">{ls.situation}</span>
+                    )}
+                  </div>
+                )}
               </Link>
             );
           })}

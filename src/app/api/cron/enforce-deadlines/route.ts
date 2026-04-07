@@ -77,10 +77,44 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── 1c. AUTO-STALE: locked matches >6h past scheduled time → in_review ──────
-  // If admin forgot to click "Go Live" and the match window has passed,
-  // move directly to in_review so admin can finalize (no live scoring, just settle points).
+  // ── 1b2. AUTO-LIVE: locked matches 25+ min past scheduled time → live ────────
+  // Match has started (lock happened at start time). After 25 min the toss is done
+  // and the match is underway — auto-promote to live so scoring begins without admin.
+  const autoLiveThreshold = new Date(Date.now() - 25 * 60 * 1000).toISOString();
   const staleThreshold = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+  const autoLived: string[] = [];
+
+  const { data: toAutoLive } = await admin
+    .from("f11_matches")
+    .select("id, team_home, team_away")
+    .eq("status", "locked")
+    .lt("scheduled_at", autoLiveThreshold)
+    .gt("scheduled_at", staleThreshold); // exclude stale (>6h) — those go to in_review below
+
+  for (const m of toAutoLive ?? []) {
+    const { error } = await admin
+      .from("f11_matches")
+      .update({ status: "live" })
+      .eq("id", m.id)
+      .eq("status", "locked");
+
+    if (!error) {
+      // Immediately trigger a playing XI sync via internal call
+      try {
+        const origin = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
+        await fetch(`${origin}/api/admin/matches/${m.id}/sync-playing-xi`, {
+          method: "POST",
+          headers: { "x-internal-cron": process.env.CRON_SECRET ?? "internal" },
+        });
+      } catch { /* non-fatal — scoring will work even without XI data */ }
+      autoLived.push(`${m.team_home} vs ${m.team_away}`);
+    } else {
+      errors.push(`auto-live ${m.id}: ${error.message}`);
+    }
+  }
+
+  // ── 1c. AUTO-STALE: locked matches >6h past scheduled time → in_review ──────
+  // If a match was never promoted to live (edge case) and the window has passed.
   const staleMovedToReview: string[] = [];
 
   const { data: staleLocked } = await admin
@@ -136,6 +170,7 @@ export async function GET(req: NextRequest) {
     ok: true,
     opened,
     locked,
+    autoLived: autoLived.length ? autoLived : undefined,
     movedToReview: staleMovedToReview.length ? staleMovedToReview : undefined,
     errors: errors.length ? errors : undefined,
     checkedAt: now,

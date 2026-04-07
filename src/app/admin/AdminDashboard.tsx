@@ -112,8 +112,9 @@ export default function AdminDashboard({
                 const msg = [
                   d.opened?.length && `Opened: ${d.opened.join(", ")}`,
                   d.locked?.length && `Locked: ${d.locked.join(", ")}`,
+                  d.autoLived?.length && `🔴 Auto-Live: ${d.autoLived.join(", ")}`,
                   d.movedToReview?.length && `→ Review: ${d.movedToReview.join(", ")}`,
-                  !d.opened?.length && !d.locked?.length && !d.movedToReview?.length && "Nothing to update",
+                  !d.opened?.length && !d.locked?.length && !d.autoLived?.length && !d.movedToReview?.length && "Nothing to update",
                 ].filter(Boolean).join(" · ");
                 toast.success(msg);
               } else toast.error(d.error ?? "Failed");
@@ -153,12 +154,21 @@ export default function AdminDashboard({
                       if (d.ok) toast.success("Lineups open!"); else toast.error(d.error);
                     })} />
                 )}
-                {(m.status === "open" || m.status === "locked") && (
+                {(m.status === "open" || m.status === "locked" || m.status === "live") && (
                   <ActionBtn label="Sync Playing XI" color="blue" loading={loading === `xi-${m.id}`}
                     onClick={() => action(`xi-${m.id}`, async () => {
                       const d = await post(`/api/admin/matches/${m.id}/sync-playing-xi`);
                       if (d.ok) toast.success(`Playing XI: ${d.playingCount} players (${d.source ?? ""})`);
                       else toast.error(d.error ?? "Sync failed");
+                    })} />
+                )}
+                {m.status === "live" && (
+                  <ActionBtn label="Sync Scores Now" color="red" loading={loading === `scores-${m.id}`}
+                    onClick={() => action(`scores-${m.id}`, async () => {
+                      const d = await post("/api/cron/sync-live");
+                      const r = (d.results ?? []).find((r: any) => r.matchId === m.id);
+                      if (r?.error) toast.error(r.error);
+                      else toast.success(`${r?.playersUpdated ?? 0} players updated`);
                     })} />
                 )}
                 {m.status === "open" && (

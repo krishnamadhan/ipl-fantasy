@@ -19,6 +19,7 @@ async function cbGet(path: string) {
 /** Extract Cricbuzz player IDs from one innings object.
  *  Handles both the confirmed "batTeamDetails.batsmenData" nested structure
  *  AND the simpler live structure where batsman/bowler are top-level arrays.
+ *  Also handles yetToBatList (players yet to come) for live matches.
  */
 function idsFromInnings(innings: any): string[] {
   const ids: string[] = [];
@@ -46,6 +47,26 @@ function idsFromInnings(innings: any): string[] {
   const bowlList = Array.isArray(rawBowl) ? rawBowl : Object.values(rawBowl);
   for (const bw of bowlList as any[]) {
     const id = String(bw.bowlerId ?? bw.id ?? bw.bowlId ?? bw.playerId ?? "").trim();
+    if (id && id !== "0") ids.push(id);
+  }
+
+  // Yet to bat — live matches show remaining batting lineup here.
+  // This is the KEY field to get the full playing XI during a live match.
+  const yetToBat =
+    innings.yetToBatList ??
+    innings.yetToBat ??
+    innings.batTeamDetails?.yetToBat ?? [];
+  for (const p of (Array.isArray(yetToBat) ? yetToBat : [])) {
+    const id = String(p.id ?? p.playerId ?? p.batId ?? "").trim();
+    if (id && id !== "0") ids.push(id);
+  }
+
+  // Current striker + non-striker (sometimes not in batsmen array mid-innings)
+  const striker = innings.batsmanStriker ?? innings.striker;
+  const nonStriker = innings.batsmanNonStriker ?? innings.nonStriker;
+  for (const b of [striker, nonStriker]) {
+    if (!b) continue;
+    const id = String(b.batId ?? b.id ?? b.playerId ?? "").trim();
     if (id && id !== "0") ids.push(id);
   }
 
@@ -142,13 +163,20 @@ async function matchNamesToDB(
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: matchId } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Allow internal cron calls (from enforce-deadlines auto-live)
+  const internalHeader = _req.headers.get("x-internal-cron");
+  const isInternalCron = internalHeader && internalHeader === process.env.CRON_SECRET;
 
   const admin = await createServiceClient();
-  const { data: profile } = await admin.from("f11_profiles").select("is_admin").eq("id", user.id).single();
-  if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  if (!isInternalCron) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { data: profile } = await admin.from("f11_profiles").select("is_admin").eq("id", user.id).single();
+    if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { data: match } = await admin
     .from("f11_matches")

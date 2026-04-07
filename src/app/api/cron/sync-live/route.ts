@@ -172,6 +172,18 @@ function parseScorecardStats(scorecard: any): { stats: ParsedPlayerStat[]; match
       s.maidens += (bw.m ?? bw.maidens ?? 0);
     }
 
+    // Yet to bat — gives us remaining players for is_playing_xi tracking
+    // These players haven't faced a ball yet but ARE in the playing XI
+    const yetToBat =
+      inn.yetToBatList ??
+      inn.yetToBat ??
+      inn.batTeamDetails?.yetToBat ?? [];
+    for (const p of (Array.isArray(yetToBat) ? yetToBat : [])) {
+      const id = String(p.id ?? p.playerId ?? p.batId ?? "").trim();
+      if (!id || id === "0") continue;
+      getOrCreate(id); // ensure they appear in statMap with is_playing_xi = true
+    }
+
     // Parse fielding credits from wicket array (only available in nested/historical API)
     for (const w of wickets) {
       const wktDesc: string = w.wktDesc ?? w.dismissal ?? "";
