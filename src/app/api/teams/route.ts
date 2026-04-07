@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Max 6 teams per user per match
+  let existingTeamCount = 0;
   if (!team_id) {
     const { count } = await supabase
       .from("f11_teams")
@@ -71,9 +72,23 @@ export async function POST(req: NextRequest) {
       .eq("user_id", user.id)
       .eq("match_id", match_id);
 
-    if ((count ?? 0) >= 6) {
+    existingTeamCount = count ?? 0;
+    if (existingTeamCount >= 6) {
       return NextResponse.json({ error: "Maximum 6 teams per match" }, { status: 400 });
     }
+  }
+
+  // Default team name: "{DisplayName} - Team {N}" so leaderboard shows distinct names
+  let defaultName = "My Team";
+  if (!team_name) {
+    const { data: profile } = await admin
+      .from("f11_profiles")
+      .select("display_name, username")
+      .eq("id", user.id)
+      .single();
+    const displayName = profile?.display_name || profile?.username || "Player";
+    const teamNum = existingTeamCount + 1;
+    defaultName = teamNum === 1 ? `${displayName}'s Team` : `${displayName} - Team ${teamNum}`;
   }
 
   const payload = {
@@ -82,7 +97,7 @@ export async function POST(req: NextRequest) {
     player_ids,
     captain_id,
     vc_id,
-    team_name: team_name || "My Team",
+    team_name: team_name || defaultName,
     updated_at: new Date().toISOString(),
   };
 

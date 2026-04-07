@@ -99,6 +99,13 @@ export async function GET(req: NextRequest) {
       .eq("status", "locked");
 
     if (!error) {
+      // Lock all open/scheduled contests — teams are frozen once live
+      await admin
+        .from("f11_contests")
+        .update({ status: "locked" })
+        .eq("match_id", m.id)
+        .in("status", ["open", "scheduled"]);
+
       // Immediately trigger a playing XI sync via internal call
       try {
         const origin = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
@@ -133,6 +140,13 @@ export async function GET(req: NextRequest) {
     if (error) {
       errors.push(`stale-locked ${m.id}: ${error.message}`);
     } else {
+      // Lock any still-open contests
+      await admin
+        .from("f11_contests")
+        .update({ status: "locked" })
+        .eq("match_id", m.id)
+        .in("status", ["open", "scheduled"]);
+
       staleMovedToReview.push(`${m.team_home} vs ${m.team_away}`);
     }
   }
