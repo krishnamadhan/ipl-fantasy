@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import Anthropic from "@anthropic-ai/sdk";
 
 const CB_HOST = "cricbuzz-cricket.p.rapidapi.com";
 
@@ -14,6 +15,45 @@ async function cbGet(path: string) {
   const res = await fetch(`https://${CB_HOST}${path}`, { headers: cbHeaders() });
   if (!res.ok) return null;
   try { return await res.json(); } catch { return null; }
+}
+
+/**
+ * Strategy 4 (Claude fallback): When structural Cricbuzz parsing finds < 15 players,
+ * use Claude to extract player names from raw commentary text.
+ * Handles any commentary format — toss announcements, playing XI broadcasts, etc.
+ */
+async function extractNamesWithClaude(
+  commText: string,
+  teamHome: string,
+  teamAway: string
+): Promise<string[]> {
+  if (!process.env.ANTHROPIC_API_KEY || commText.length < 50) return [];
+  try {
+    const client = new Anthropic();
+    const msg = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 512,
+      messages: [{
+        role: "user",
+        content: `Extract cricket player names from this Cricbuzz match commentary for the game between "${teamHome}" and "${teamAway}".
+
+Commentary text:
+${commText.slice(0, 4000)}
+
+Return ONLY a JSON array of full player names that are playing in this match today.
+Include players from BOTH teams. Look for playing XI announcements, toss messages, batting and bowling names.
+Example format: ["Virat Kohli", "Rohit Sharma", "MS Dhoni"]
+Return [] if no player names found. Return ONLY the JSON array, nothing else.`,
+      }],
+    });
+    const text = msg.content[0]?.type === "text" ? msg.content[0].text.trim() : "";
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    const names = JSON.parse(match[0]) as string[];
+    return names.filter((n) => typeof n === "string" && n.trim().length > 2);
+  } catch {
+    return [];
+  }
 }
 
 /** Extract Cricbuzz player IDs from one innings object.
@@ -214,9 +254,17 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   // ── Strategy 2: Commentary — reliable for toss/pre-match ──
+  let rawCommText = "";
   if (playingPlayerIds.size < 22) {
     const commData = await cbGet(`/mcenter/v1/${cricMatchId}/comm`);
     if (commData && !commData.error) {
+      // Cache raw text for Strategy 4 fallback
+      rawCommText = (commData.comwrapper ?? [])
+        .slice(0, 80)
+        .map((c: any) => c?.commentary?.commtxt ?? "")
+        .filter(Boolean)
+        .join("\n");
+
       const names = namesFromCommentary(commData);
       if (names.length > 0) {
         const commMatched = await matchNamesToDB(admin, names, match.team_home, match.team_away);
@@ -240,6 +288,34 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         const added = (players ?? []).filter((p) => !playingPlayerIds.has(p.id)).length;
         (players ?? []).forEach((p) => playingPlayerIds.add(p.id));
         if (players?.length) sources.push(`mcenter(+${added} new)`);
+      }
+    }
+  }
+
+  // ── Strategy 4: Claude API fallback ─────────────────────────────────────────
+  // When structural parsing finds < 15 players, send raw commentary to Claude.
+  // Claude reliably extracts player names from any commentary format (toss, XI broadcasts).
+  if (playingPlayerIds.size < 15) {
+    // Fetch raw commentary if not already fetched
+    if (!rawCommText) {
+      const commData = await cbGet(`/mcenter/v1/${cricMatchId}/comm`);
+      if (commData) {
+        rawCommText = (commData.comwrapper ?? [])
+          .slice(0, 80)
+          .map((c: any) => c?.commentary?.commtxt ?? "")
+          .filter(Boolean)
+          .join("\n");
+      }
+    }
+    if (rawCommText.length > 50) {
+      const claudeNames = await extractNamesWithClaude(rawCommText, match.team_home, match.team_away);
+      if (claudeNames.length > 0) {
+        const claudeMatched = await matchNamesToDB(admin, claudeNames, match.team_home, match.team_away);
+        const added = [...claudeMatched].filter((id) => !playingPlayerIds.has(id)).length;
+        claudeMatched.forEach((id) => playingPlayerIds.add(id));
+        if (claudeMatched.size > 0) {
+          sources.push(`claude(${claudeNames.length} names→${claudeMatched.size} matched, +${added} new)`);
+        }
       }
     }
   }

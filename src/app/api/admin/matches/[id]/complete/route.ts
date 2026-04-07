@@ -96,5 +96,12 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     }
   }
 
+  // Update season leaderboard — aggregate total_points per user across all completed matches
+  try {
+    await service.rpc("f11_update_season_leaderboard");
+  } catch {
+    // Non-fatal — season leaderboard update is best-effort
+  }
+
   return NextResponse.json({ ok: true, payouts: payoutResults });
 }

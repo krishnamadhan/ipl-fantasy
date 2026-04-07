@@ -27,6 +27,22 @@ function cbHeaders() {
   };
 }
 
+/** Fetch Cricbuzz endpoint with 1 retry on 5xx/network failure */
+async function cbFetchWithRetry(url: string, attempts = 2): Promise<Response | null> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url, { headers: cbHeaders(), signal: AbortSignal.timeout(10000) });
+      if (res.ok) return res;
+      if (res.status < 500) return res; // 4xx — don't retry
+      // 5xx — wait 2s and retry
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 2000));
+    } catch {
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+  return null;
+}
+
 // Convert cricket notation overs (3.4 = 3 overs 4 balls) to decimal
 function cnToDecimal(cn: number): number {
   const full = Math.floor(cn);
@@ -302,11 +318,9 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      // 2. Fetch scorecard
-      const res = await fetch(`https://${CB_HOST}/mcenter/v1/${match.cricapi_match_id}/scard`, {
-        headers: cbHeaders(),
-      });
-      if (!res.ok) throw new Error(`Cricbuzz returned ${res.status}`);
+      // 2. Fetch scorecard (with retry on 5xx)
+      const res = await cbFetchWithRetry(`https://${CB_HOST}/mcenter/v1/${match.cricapi_match_id}/scard`);
+      if (!res || !res.ok) throw new Error(`Cricbuzz returned ${res?.status ?? "no response"}`);
       const data = await res.json();
 
       // 3. Parse stats

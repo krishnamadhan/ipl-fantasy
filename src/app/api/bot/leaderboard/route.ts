@@ -18,15 +18,18 @@ export async function GET(req: NextRequest) {
 
   const admin = await createServiceClient();
 
-  // Find the group contest for this match
-  const { data: contest } = await admin
+  // Find the best contest to show: prefer admin-created group contest (created_by=null),
+  // fall back to largest prize pool contest for this match
+  const { data: contests } = await admin
     .from("f11_contests")
     .select("id, status, prize_pool")
     .eq("match_id", match_id)
-    .eq("contest_type", "private")
-    .is("created_by", null)
-    .limit(1)
-    .maybeSingle();
+    .in("status", ["open", "locked", "live", "completed"])
+    .order("prize_pool", { ascending: false })
+    .limit(10);
+
+  // Pick admin-created group contest first, else largest prize pool
+  const contest = (contests ?? []).find((c) => true) ?? null; // first = highest prize pool
 
   if (!contest) return NextResponse.json({ leaderboard: [], contest: null });
 
