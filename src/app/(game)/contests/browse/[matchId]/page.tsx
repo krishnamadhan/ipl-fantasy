@@ -53,7 +53,7 @@ export default async function BrowseContestsPage({ params }: { params: Promise<{
   const { data: myEntries } = contestIds.length > 0
     ? await supabase
         .from("f11_entries")
-        .select("id, contest_id, team_id")
+        .select("id, contest_id, team_id, team_name")
         .eq("user_id", user.id)
         .in("contest_id", contestIds)
     : { data: [] };

@@ -29,7 +29,7 @@ function formatPrize(amount: number): string {
   return `₹${amount}`;
 }
 
-type Entry = { id: string; contest_id: string; team_id: string | null };
+type Entry = { id: string; contest_id: string; team_id: string | null; team_name: string | null };
 type Team  = { id: string; team_name: string; captain: { name: string } | null; vc: { name: string } | null };
 
 export default function ContestBrowseClient({
@@ -366,7 +366,7 @@ export default function ContestBrowseClient({
                               <path d="M3.5 6l2 2 3-3" stroke="#22C55E" strokeWidth="1.5" strokeLinecap="round" />
                             </svg>
                             <span className="text-green-400 text-xs font-bold truncate">
-                              {team?.team_name ?? "Team"}
+                              {team?.team_name ?? entry.team_name ?? "My Team"}
                             </span>
                             {team && (
                               <span className="text-slate-600 text-[10px] truncate">

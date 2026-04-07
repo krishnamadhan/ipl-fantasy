@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       created_by: null,
       name: `${group_name} — ${match.team_home} vs ${match.team_away}`,
       contest_type: "private",
-      entry_fee: 0,
+      entry_fee: 1000,
       max_teams: 50,
       prize_pool_type: "winner_takes_all",
       prize_pool: 0,
