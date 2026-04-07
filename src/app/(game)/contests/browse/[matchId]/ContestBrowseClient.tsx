@@ -344,7 +344,11 @@ export default function ContestBrowseClient({
                       className="font-black text-2xl leading-none"
                       style={{ color: isMega ? "#C084FC" : "#F5A623" }}
                     >
-                      {formatPrize(c.prize_pool)}
+                      {formatPrize(
+                        c.prize_pool > 0
+                          ? c.prize_pool
+                          : Math.floor((c.entry_count ?? 0) * c.entry_fee * 0.9)
+                      )}
                     </p>
                     <p className="text-slate-600 text-[9px] uppercase tracking-wide mt-0.5">Prize Pool</p>
                   </div>

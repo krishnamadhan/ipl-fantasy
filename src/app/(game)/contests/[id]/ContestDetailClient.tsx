@@ -126,7 +126,11 @@ export default function ContestDetailClient({
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-2 px-4 pb-3">
-          <StatBox label="Prize Pool" value={formatPrize(contest.prize_pool)} accent />
+          <StatBox label="Prize Pool" value={formatPrize(
+            contest.prize_pool > 0
+              ? contest.prize_pool
+              : Math.floor(entries.length * contest.entry_fee * 0.9)
+          )} accent />
           <StatBox label="Entry Fee" value={contest.entry_fee === 0 ? "FREE" : formatCurrency(contest.entry_fee)} />
           <StatBox label="Teams" value={`${entries.length}/${contest.max_teams}`} />
         </div>
@@ -203,7 +207,11 @@ export default function ContestDetailClient({
         {tab === "prizes" && (
           <PrizesTab
             tiers={tiers}
-            prizePool={contest.prize_pool}
+            prizePool={
+              contest.prize_pool > 0
+                ? contest.prize_pool
+                : Math.floor(entries.length * contest.entry_fee * 0.9)
+            }
             winnersCount={contest.winners_count ?? 1}
             maxTeams={contest.max_teams}
           />
