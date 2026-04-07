@@ -1,22 +1,32 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { Toaster } from "react-hot-toast";
-import { formatCurrency, shortTeam } from "@/lib/utils/format";
+import { shortTeam } from "@/lib/utils/format";
 
-export default function JoinByCodePage() {
+function JoinByCodeContent() {
   const [code, setCode] = useState("");
   const [preview, setPreview] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [joining, setJoining] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  async function handlePreview() {
-    if (code.trim().length < 4) return;
+  // Auto-populate code from URL and trigger preview
+  useEffect(() => {
+    const codeParam = searchParams.get("code");
+    if (codeParam) {
+      const upper = codeParam.toUpperCase();
+      setCode(upper);
+      fetchPreview(upper);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchPreview(c: string) {
+    if (c.trim().length < 4) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/contests/join/${code.trim().toUpperCase()}`);
+      const res = await fetch(`/api/contests/join/${c.trim().toUpperCase()}`);
       if (!res.ok) { toast.error("Invalid invite code"); setPreview(null); return; }
       setPreview(await res.json());
     } finally {
@@ -24,30 +34,14 @@ export default function JoinByCodePage() {
     }
   }
 
-  async function handleJoin() {
-    if (!preview) return;
-    const saved = sessionStorage.getItem(`team_${preview.match_id}`);
-    if (!saved) {
-      toast.error("Build your team first!");
-      router.push(`/team-builder/${preview.match_id}`);
-      return;
-    }
+  async function handlePreview() {
+    fetchPreview(code);
+  }
 
-    setJoining(true);
-    try {
-      const team = JSON.parse(saved);
-      const res = await fetch("/api/contests/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contest_id: preview.id, ...team }),
-      });
-      const data = await res.json();
-      if (!res.ok) { toast.error(data.error); return; }
-      toast.success("Joined!");
-      router.push(`/contests/${preview.id}`);
-    } finally {
-      setJoining(false);
-    }
+  function handleJoin() {
+    if (!preview) return;
+    // Redirect to browse page — user selects their team and joins there
+    router.push(`/contests/browse/${preview.match_id}`);
   }
 
   return (
@@ -55,29 +49,44 @@ export default function JoinByCodePage() {
       <Toaster />
       <h1 className="text-xl font-bold text-white mb-6">Join Private Contest</h1>
 
-      <div className="bg-surface-card rounded-2xl p-5 border border-slate-700 space-y-4">
+      <div
+        className="rounded-2xl p-5 border space-y-4"
+        style={{ background: "#111827", borderColor: "rgba(255,255,255,0.08)" }}
+      >
         <div>
-          <label className="block text-slate-300 text-sm mb-1">6-Character Invite Code</label>
+          <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
+            Invite Code
+          </label>
           <input
             type="text"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             maxLength={6}
             placeholder="e.g. AB3X7Y"
-            className="w-full bg-surface-elevated border border-slate-600 rounded-xl px-4 py-3 text-white font-mono text-xl tracking-widest text-center uppercase focus:outline-none focus:border-brand"
+            className="w-full rounded-xl px-4 py-3 text-white font-mono text-xl tracking-widest text-center uppercase focus:outline-none transition"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.10)",
+            }}
+            onFocus={(e) => (e.target.style.borderColor = "rgba(245,166,35,0.50)")}
+            onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.10)")}
           />
         </div>
 
         <button
           onClick={handlePreview}
           disabled={loading || code.length < 4}
-          className="w-full bg-surface-elevated border border-slate-600 text-white py-3 rounded-xl font-semibold disabled:opacity-50"
+          className="w-full py-3 rounded-xl font-semibold text-white disabled:opacity-40 transition"
+          style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
         >
           {loading ? "Looking up…" : "Find Contest"}
         </button>
 
         {preview && (
-          <div className="bg-brand/10 border border-brand/30 rounded-xl p-4 space-y-2">
+          <div
+            className="rounded-xl p-4 space-y-3 border"
+            style={{ background: "rgba(245,166,35,0.08)", borderColor: "rgba(245,166,35,0.30)" }}
+          >
             <p className="text-white font-bold">{preview.name}</p>
             {preview.match && (
               <p className="text-slate-400 text-sm">
@@ -85,23 +94,47 @@ export default function JoinByCodePage() {
               </p>
             )}
             <div className="flex justify-between text-sm">
-              <span className="text-slate-400">Entry Fee</span>
-              <span className="text-white font-semibold">{formatCurrency(preview.entry_fee)}</span>
+              <span className="text-slate-400">Entry</span>
+              <span className="text-white font-semibold">
+                {preview.entry_fee === 0 ? (
+                  <span className="text-green-400">FREE</span>
+                ) : (
+                  `${preview.entry_fee.toLocaleString("en-IN")} pts`
+                )}
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-slate-400">Prize Pool</span>
-              <span className="text-brand font-bold">{formatCurrency(preview.prize_pool)}</span>
+              <span className="font-bold" style={{ color: "#F5A623" }}>
+                {preview.prize_pool === 0
+                  ? `${(preview.entry_fee * (preview.entry_count ?? 0) * 0.9).toLocaleString("en-IN")} pts`
+                  : `${preview.prize_pool.toLocaleString("en-IN")} pts`}
+              </span>
             </div>
             <button
               onClick={handleJoin}
-              disabled={joining}
-              className="w-full bg-brand text-white py-3 rounded-xl font-bold disabled:opacity-50"
+              className="w-full py-3 rounded-xl font-black text-white text-base shadow-lg transition"
+              style={{
+                background: "linear-gradient(135deg, #F5A623, #E8950F)",
+                boxShadow: "0 4px 16px rgba(245,166,35,0.35)",
+              }}
             >
-              {joining ? "Joining…" : `Join · ${formatCurrency(preview.entry_fee)}`}
+              Select Team &amp; Join →
             </button>
+            <p className="text-slate-500 text-xs text-center">
+              You&apos;ll pick your team on the next screen
+            </p>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+export default function JoinByCodePage() {
+  return (
+    <Suspense>
+      <JoinByCodeContent />
+    </Suspense>
   );
 }
