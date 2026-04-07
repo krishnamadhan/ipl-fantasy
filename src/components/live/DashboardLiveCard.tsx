@@ -88,22 +88,24 @@ export default function DashboardLiveCard({ matches }: { matches: LiveMatch[] })
               <span className="text-red-400 text-xs font-black">Watch →</span>
             </div>
             {ls ? (
-              <div className="mt-1.5 flex items-center gap-3 text-[11px]">
-                <span className="text-white font-bold">
-                  {ls.team1_runs}/{ls.team1_wickets}
-                  <span className="text-slate-500 font-normal ml-1">({ls.team1_overs} ov)</span>
-                </span>
-                {ls.team2_runs > 0 && (
-                  <>
-                    <span className="text-slate-700">·</span>
-                    <span className="text-slate-300">
-                      {ls.team2_runs}/{ls.team2_wickets}
-                      <span className="text-slate-500 ml-1">({ls.team2_overs} ov)</span>
-                    </span>
-                  </>
-                )}
+              <div className="mt-1.5 text-[11px]">
+                <div className="flex items-center gap-3">
+                  <span className="text-white font-bold">
+                    {ls.team1_runs}/{ls.team1_wickets}
+                    <span className="text-slate-500 font-normal ml-1">({ls.team1_overs} ov)</span>
+                  </span>
+                  {ls.team2_runs > 0 && (
+                    <>
+                      <span className="text-slate-700">·</span>
+                      <span className="text-slate-300">
+                        {ls.team2_runs}/{ls.team2_wickets}
+                        <span className="text-slate-500 ml-1">({ls.team2_overs} ov)</span>
+                      </span>
+                    </>
+                  )}
+                </div>
                 {ls.situation && (
-                  <span className="text-amber-400 truncate max-w-[130px]">{ls.situation}</span>
+                  <p className="text-amber-400 mt-0.5 line-clamp-2 leading-snug">{ls.situation}</p>
                 )}
               </div>
             ) : (

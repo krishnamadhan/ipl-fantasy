@@ -113,9 +113,9 @@ export default function LiveScoreHeader({
           </div>
         </div>
 
-        {/* Situation text */}
+        {/* Situation text — allow 2 lines so DLS messages aren't cut off */}
         {score.situation && (
-          <p className="text-slate-400 text-xs text-center truncate">{score.situation}</p>
+          <p className="text-slate-400 text-xs text-center line-clamp-2 leading-snug">{score.situation}</p>
         )}
 
         {/* Last updated — only shown when Realtime update received */}
