@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { formatCurrency, shortTeam, TEAM_COLORS, cn } from "@/lib/utils/format";
+import { shortTeam, TEAM_COLORS, cn } from "@/lib/utils/format";
 import toast, { Toaster } from "react-hot-toast";
 
 const MAX_TEAMS_PER_CONTEST = 3; // Max entries a single user can have in one contest
@@ -23,10 +23,9 @@ const TYPE_META: Record<string, { color: string; bg: string; border: string; lab
 };
 
 function formatPrize(amount: number): string {
-  if (amount >= 10_000_000) return `₹${(amount / 10_000_000).toFixed(1)} Cr`;
-  if (amount >= 100_000)    return `₹${(amount / 100_000).toFixed(1)} L`;
-  if (amount >= 1_000)      return `₹${(amount / 1_000).toFixed(0)}K`;
-  return `₹${amount}`;
+  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M pts`;
+  if (amount >= 1_000)     return `${(amount / 1_000).toFixed(0)}K pts`;
+  return `${amount} pts`;
 }
 
 type Entry = { id: string; contest_id: string; team_id: string | null; team_name: string | null };
@@ -454,7 +453,7 @@ export default function ContestBrowseClient({
                       {c.entry_fee === 0 ? (
                         <span className="text-green-400">FREE</span>
                       ) : (
-                        formatCurrency(c.entry_fee)
+                        `${c.entry_fee.toLocaleString("en-IN")} pts`
                       )}
                     </p>
                   </div>
