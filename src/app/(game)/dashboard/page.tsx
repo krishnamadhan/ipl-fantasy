@@ -26,6 +26,7 @@ export default async function DashboardPage() {
       .from("f11_matches")
       .select("id, team_home, team_away, venue, city, scheduled_at, status")
       .in("status", ["open", "locked", "scheduled", "live"])
+      .gt("scheduled_at", new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
       .order("scheduled_at", { ascending: true })
       .limit(6),
   ]);

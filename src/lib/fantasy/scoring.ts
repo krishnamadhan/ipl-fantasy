@@ -102,8 +102,9 @@ export function calcFantasyPoints(
     bd.bowling.haul_bonus = 16;
   } else if (stats.wickets >= 4) {
     bd.bowling.haul_bonus = 8;
+  } else if (stats.wickets >= 3) {
+    bd.bowling.haul_bonus = 4;
   }
-  // 3-wicket haul: NO bonus in TATA IPL (common misconception)
 
   bd.bowling.maidens = stats.maidens * 8;
 

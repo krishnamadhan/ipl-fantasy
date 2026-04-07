@@ -37,9 +37,12 @@ export default async function MatchesPage() {
     contestMap.set(c.match_id, { count: prev.count + 1, totalPrize: prev.totalPrize + (c.prize_pool ?? 0) });
   }
 
-  const DONE = ["completed", "abandoned", "no_result"];
-  const upcoming = (matches ?? []).filter((m) => !DONE.includes(m.status));
-  const completed = (matches ?? []).filter((m) => DONE.includes(m.status));
+  const DONE = ["completed", "abandoned", "no_result", "in_review"];
+  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
+  const isExpired = (m: { status: string; scheduled_at: string }) =>
+    m.status !== "live" && new Date(m.scheduled_at) <= sixHoursAgo;
+  const upcoming = (matches ?? []).filter((m) => !DONE.includes(m.status) && !isExpired(m));
+  const completed = (matches ?? []).filter((m) => DONE.includes(m.status) || isExpired(m));
 
   return (
     <div className="max-w-lg mx-auto pb-24" style={{ background: "#080d1a", minHeight: "100vh" }}>
