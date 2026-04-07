@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatCurrency, shortTeam, TEAM_COLORS, formatTimeIST } from "@/lib/utils/format";
 import type { IplMatch } from "@/types/match";
 import CountdownTimer from "@/components/ui/CountdownTimer";
+import DashboardLiveCard from "@/components/live/DashboardLiveCard";
 
 export const revalidate = 30;
 
@@ -72,63 +73,9 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* ── LIVE banner ── */}
+      {/* ── LIVE banner — Realtime client component, self-updating ── */}
       {liveMatches.length > 0 && (
-        <div className="mx-4 mb-4 rounded-2xl overflow-hidden border border-red-500/30"
-          style={{ background: "linear-gradient(135deg, #200808 0%, #140404 100%)" }}>
-          <div className="flex items-center gap-2 px-4 py-2 border-b border-red-500/20">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-red-400 text-[10px] font-black uppercase tracking-widest">Live Now</span>
-          </div>
-          {liveMatches.map((m) => {
-            const hc = teamColor(m.team_home);
-            const ac = teamColor(m.team_away);
-            const ls = m.live_score_summary as any;
-            return (
-              <Link key={m.id} href={`/matches/${m.id}`}
-                className="block px-4 py-3 hover:bg-red-500/5 transition">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-7 h-7 rounded-full border flex items-center justify-center text-[9px] font-black"
-                        style={{ borderColor: hc, background: hc + "33", color: hc }}>
-                        {shortTeam(m.team_home).slice(0, 2)}
-                      </div>
-                      <span className="text-white font-black text-sm">{shortTeam(m.team_home)}</span>
-                    </div>
-                    <span className="text-slate-600 text-xs">vs</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-white font-black text-sm">{shortTeam(m.team_away)}</span>
-                      <div className="w-7 h-7 rounded-full border flex items-center justify-center text-[9px] font-black"
-                        style={{ borderColor: ac, background: ac + "33", color: ac }}>
-                        {shortTeam(m.team_away).slice(0, 2)}
-                      </div>
-                    </div>
-                  </div>
-                  <span className="text-red-400 text-sm font-black">Watch →</span>
-                </div>
-                {ls && (
-                  <div className="mt-1.5 flex items-center gap-3 text-[11px]">
-                    <span className="text-white font-bold">
-                      {ls.team1_runs}/{ls.team1_wickets} <span className="text-slate-500 font-normal">({ls.team1_overs} ov)</span>
-                    </span>
-                    {ls.team2_runs > 0 && (
-                      <>
-                        <span className="text-slate-700">·</span>
-                        <span className="text-slate-300">
-                          {ls.team2_runs}/{ls.team2_wickets} <span className="text-slate-500">({ls.team2_overs} ov)</span>
-                        </span>
-                      </>
-                    )}
-                    {ls.situation && (
-                      <span className="text-amber-400 truncate max-w-[140px]">{ls.situation}</span>
-                    )}
-                  </div>
-                )}
-              </Link>
-            );
-          })}
-        </div>
+        <DashboardLiveCard matches={liveMatches as any} />
       )}
 
       {/* ── Featured match hero ── */}

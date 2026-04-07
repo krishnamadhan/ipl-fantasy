@@ -1,4 +1,6 @@
 "use client";
+import { useState, useEffect, useRef } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { shortTeam, TEAM_COLORS } from "@/lib/utils/format";
 
 interface LiveScore {
@@ -7,7 +9,42 @@ interface LiveScore {
   current_batting: string; situation: string;
 }
 
-export default function LiveScoreHeader({ score, isLive }: { score: LiveScore | null; isLive: boolean }) {
+export default function LiveScoreHeader({
+  score: initialScore,
+  isLive,
+  matchId,
+}: {
+  score: LiveScore | null;
+  isLive: boolean;
+  matchId: string;
+}) {
+  const [score, setScore] = useState<LiveScore | null>(initialScore);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const channelRef = useRef<any>(null);
+
+  // Subscribe to Supabase Realtime on f11_matches for this match
+  // Fires whenever sync-live cron updates live_score_summary
+  useEffect(() => {
+    if (!isLive) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`live-score:${matchId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "f11_matches", filter: `id=eq.${matchId}` },
+        (payload) => {
+          const newScore = payload.new?.live_score_summary as LiveScore | null;
+          if (newScore) {
+            setScore(newScore);
+            setLastUpdated(new Date());
+          }
+        }
+      )
+      .subscribe();
+    channelRef.current = channel;
+    return () => { supabase.removeChannel(channel); };
+  }, [isLive, matchId]);
+
   if (!score) {
     return (
       <div className="rounded-2xl border border-slate-700/60 px-4 py-3 text-center"
@@ -79,6 +116,13 @@ export default function LiveScoreHeader({ score, isLive }: { score: LiveScore | 
         {/* Situation text */}
         {score.situation && (
           <p className="text-slate-400 text-xs text-center truncate">{score.situation}</p>
+        )}
+
+        {/* Last updated — only shown when Realtime update received */}
+        {lastUpdated && (
+          <p className="text-slate-700 text-[10px] text-center mt-1">
+            Updated {lastUpdated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          </p>
         )}
       </div>
     </div>

@@ -152,7 +152,7 @@ export default async function LiveMatchPage({
 
       <div className="px-4 pt-4 space-y-5">
         {/* ── Live score card ── */}
-        <LiveScoreHeader score={match.live_score_summary} isLive={isLive} />
+        <LiveScoreHeader score={match.live_score_summary} isLive={isLive} matchId={matchId} />
 
         {/* ── My team section ── */}
         {myEntry ? (
