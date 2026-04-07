@@ -166,9 +166,6 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const sources: string[] = [];
 
   // ── Strategy 1: Scard — best source for live/completed matches ──
-  // The live API returns innings.batsman (singular array) with ALL batting XI players listed,
-  // and innings.bowler (singular array) with bowlers who have bowled so far.
-  // Combining both innings gives the full 22-player playing XI once both have batted.
   const scardData = await cbGet(`/mcenter/v1/${cricMatchId}/scard`);
   if (scardData && !scardData.error) {
     const scorecard: any[] =
@@ -188,9 +185,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  // ── Strategy 2: Commentary — reliable for toss/pre-match and supplements live scard ──
-  // Cricbuzz posts "(Playing XI): Name1, Name2, ..." at toss time.
-  // This covers the fielding team who won't appear in scard until they bat.
+  // ── Strategy 2: Commentary — reliable for toss/pre-match ──
   if (playingPlayerIds.size < 22) {
     const commData = await cbGet(`/mcenter/v1/${cricMatchId}/comm`);
     if (commData && !commData.error) {

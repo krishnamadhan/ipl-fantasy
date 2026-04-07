@@ -51,8 +51,15 @@ export default async function TeamBuilderPage({
     playingXiMap.set(mp.player_id, mp.is_playing_xi);
   }
 
+  // Normalize for comparison — handles case differences and minor whitespace
+  const norm = (s: string) => (s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+  const homeNorm = norm(match.team_home);
+  const awayNorm = norm(match.team_away);
   const matchPlayersList = allPlayers
-    .filter((p) => p.ipl_team === match.team_home || p.ipl_team === match.team_away)
+    .filter((p) => {
+      const t = norm(p.ipl_team);
+      return t === homeNorm || t === awayNorm;
+    })
     .map((p) => ({
       ...p,
       is_playing_xi: playingXiMap.has(p.id) ? playingXiMap.get(p.id) : undefined,

@@ -72,7 +72,9 @@ function parseLiveScore(scorecard: any, teamHome: string, teamAway: string): Liv
     for (let i = 0; i < Math.min(innings.length, 2); i++) {
       const inn = innings[i];
       const score = inn.score ?? inn.runs ?? 0;
-      const wickets = inn.wickets ?? 0;
+      // wickets may be a number (scard) or array (mcenter) — normalise to number
+      const wickets = typeof inn.wickets === "number" ? inn.wickets
+        : (Array.isArray(inn.wickets) ? inn.wickets.length : Object.keys(inn.wickets ?? {}).length);
       const overs = String(inn.overs ?? inn.currentOver ?? "0.0");
       // Live API uses "batteamname" / "batteamsname", nested uses "bat" / "battingTeam"
       const battingTeam = inn.batteamname ?? inn.battingTeam ?? inn.bat ?? "";
@@ -90,7 +92,6 @@ function parseLiveScore(scorecard: any, teamHome: string, teamAway: string): Liv
       }
     }
 
-    // Current batting / chase situation
     const latestInn = innings[innings.length - 1];
     summary.current_batting = latestInn?.batteamname ?? latestInn?.battingTeam ?? latestInn?.bat ?? "";
     summary.situation = scorecard.status ?? scorecard.matchHeader?.statusText ?? "";

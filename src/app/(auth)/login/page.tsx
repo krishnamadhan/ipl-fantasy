@@ -17,12 +17,14 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { setLoading(false); toast.error(error.message); return; }
+
+    // Self-heal: ensure profile exists (handles pre-migration-006 accounts)
+    await fetch("/api/auth/ensure-profile", { method: "POST" }).catch(() => {});
+
     setLoading(false);
-    if (error) toast.error(error.message);
-    else {
-      router.push("/dashboard");
-      router.refresh();
-    }
+    router.push("/dashboard");
+    router.refresh();
   }
 
   async function handleForgotPassword() {

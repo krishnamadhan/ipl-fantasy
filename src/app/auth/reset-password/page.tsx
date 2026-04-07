@@ -15,12 +15,14 @@ export default function ResetPasswordPage() {
     if (password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
+    if (error) { setLoading(false); toast.error(error.message); return; }
+
+    // Ensure profile exists (handles missing profiles from before migration 006)
+    await fetch("/api/auth/ensure-profile", { method: "POST" }).catch(() => {});
+
     setLoading(false);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Password updated!");
-      setTimeout(() => router.push("/dashboard"), 1200);
-    }
+    toast.success("Password updated! Redirecting…");
+    setTimeout(() => router.push("/dashboard"), 1200);
   }
 
   return (
