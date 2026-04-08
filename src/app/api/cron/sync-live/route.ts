@@ -260,10 +260,23 @@ function parseScorecardStats(scorecard: any): { stats: ParsedPlayerStat[]; match
 }
 
 export async function GET(req: NextRequest) {
-  // Verify cron secret (set CRON_SECRET in .env.local)
+  // Accept either the cron secret OR a logged-in admin session
   const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const hasCronSecret = process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`;
+
+  if (!hasCronSecret) {
+    // Fall back to checking admin session cookie
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const adminClient = await createServiceClient();
+    const { data: profile } = await adminClient
+      .from("f11_profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
+    if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   if (!process.env.RAPIDAPI_KEY) {

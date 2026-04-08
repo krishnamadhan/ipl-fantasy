@@ -45,8 +45,16 @@ async function cbGet(path: string): Promise<any | null> {
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const hasCronSecret = process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`;
+
+  if (!hasCronSecret) {
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { data: profile } = await (await createServiceClient())
+      .from("f11_profiles").select("is_admin").eq("id", user.id).single();
+    if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const admin = await createServiceClient();
