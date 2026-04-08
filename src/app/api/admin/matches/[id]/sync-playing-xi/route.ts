@@ -220,12 +220,22 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   const { data: match } = await admin
     .from("f11_matches")
-    .select("cricapi_match_id, team_home, team_away, status")
+    .select("cricapi_match_id, team_home, team_away, status, toss_winner")
     .eq("id", matchId)
     .single();
 
   if (!match?.cricapi_match_id) {
     return NextResponse.json({ error: "Match has no Cricbuzz ID" }, { status: 400 });
+  }
+
+  // Do not sync playing XI until toss has been confirmed — Cricbuzz returns probable XI
+  // before the toss via mcenter, which would pollute f11_match_players with incorrect data.
+  if (!match.toss_winner) {
+    return NextResponse.json({
+      ok: false,
+      message: "Toss has not happened yet — playing XI sync skipped",
+      playingCount: 0,
+    });
   }
 
   const cricMatchId = match.cricapi_match_id;

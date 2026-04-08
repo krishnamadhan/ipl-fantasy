@@ -77,10 +77,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── 1b2. AUTO-LIVE: locked matches 25+ min past scheduled time → live ────────
-  // Match has started (lock happened at start time). After 25 min the toss is done
-  // and the match is underway — auto-promote to live so scoring begins without admin.
-  const autoLiveThreshold = new Date(Date.now() - 25 * 60 * 1000).toISOString();
+  // ── 1b2. AUTO-LIVE: locked matches 35+ min past scheduled time → live ────────
+  // Toss typically happens 20-30 min after scheduled start. Wait 35 min to be safe
+  // before auto-promoting to live, so playing XI sync has real toss data.
+  const autoLiveThreshold = new Date(Date.now() - 35 * 60 * 1000).toISOString();
   const staleThreshold = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
   const autoLived: string[] = [];
 
