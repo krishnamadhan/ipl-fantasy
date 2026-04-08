@@ -194,6 +194,7 @@ export default function ContestDetailClient({
             showTeams={showTeams}
             isLive={isLive}
             contestId={contest.id}
+            winnersCount={contest.winners_count ?? 1}
           />
         )}
         {tab === "myteam" && (
@@ -236,13 +237,14 @@ function StatBox({ label, value, accent }: { label: string; value: string; accen
 }
 
 function LeaderboardTab({
-  entries, currentUserId, showTeams, isLive, contestId,
+  entries, currentUserId, showTeams, isLive, contestId, winnersCount,
 }: {
   entries: any[];
   currentUserId: string;
   showTeams: boolean;
   isLive: boolean;
   contestId: string;
+  winnersCount: number;
 }) {
   if (!showTeams) {
     return (
@@ -266,6 +268,10 @@ function LeaderboardTab({
     return <p className="text-center text-slate-500 py-12 text-sm">No entries yet</p>;
   }
 
+  const myIndex = entries.findIndex((e) => e.user_id === currentUserId);
+  const myRank = myIndex >= 0 ? (entries[myIndex].rank ?? myIndex + 1) : null;
+  const spotsFromWinning = myRank !== null && myRank > winnersCount ? myRank - winnersCount : 0;
+
   return (
     <div>
       {isLive && (
@@ -275,6 +281,32 @@ function LeaderboardTab({
         >
           <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
           <p className="text-red-400 text-xs font-bold">Live · Auto-updating</p>
+        </div>
+      )}
+
+      {/* My position summary strip */}
+      {myRank !== null && (
+        <div
+          className="flex items-center justify-between px-4 py-2.5 border-b"
+          style={{
+            background: myRank <= winnersCount ? "rgba(34,197,94,0.06)" : "rgba(255,255,255,0.02)",
+            borderColor: myRank <= winnersCount ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)",
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-wide"
+              style={{ color: myRank <= winnersCount ? "#22C55E" : "#94A3B8" }}>
+              Your Rank
+            </span>
+            <span className="font-black text-white text-sm">#{myRank}</span>
+          </div>
+          {spotsFromWinning > 0 ? (
+            <span className="text-slate-500 text-[10px]">
+              {spotsFromWinning} spot{spotsFromWinning !== 1 ? "s" : ""} from winning
+            </span>
+          ) : (
+            <span className="text-green-400 text-[10px] font-bold">In the money 🏆</span>
+          )}
         </div>
       )}
 
@@ -293,60 +325,78 @@ function LeaderboardTab({
         const isMe = e.user_id === currentUserId;
         const rank = e.rank ?? i + 1;
         const captainName = e.captain_name ?? null;
+        // Insert winner zone divider AFTER the last winning rank
+        const showWinnerDivider = winnersCount > 0 && rank === winnersCount + 1;
 
         return (
-          <div
-            key={e.id}
-            className={cn(
-              "grid grid-cols-[40px_1fr_56px_68px] gap-2 items-center px-4 py-3.5 border-b transition",
-              isMe
-                ? "bg-brand/5 border-brand/10"
-                : "hover:bg-white/[0.02]"
-            )}
-            style={{ borderColor: isMe ? undefined : "rgba(255,255,255,0.04)" }}
-          >
-            {/* Rank */}
-            <div>
-              {rank === 1 ? <span className="text-xl">🥇</span>
-               : rank === 2 ? <span className="text-xl">🥈</span>
-               : rank === 3 ? <span className="text-xl">🥉</span>
-               : (
-                <span className={cn("font-black text-sm", isMe ? "text-brand" : "text-slate-500")}>
-                  {rank}
+          <div key={e.id}>
+            {/* Winner zone boundary — Dream11's green cutoff line */}
+            {showWinnerDivider && (
+              <div
+                className="flex items-center gap-3 px-4 py-2 border-y"
+                style={{ background: "rgba(239,68,68,0.05)", borderColor: "rgba(239,68,68,0.15)" }}
+              >
+                <div className="flex-1 h-px" style={{ background: "rgba(239,68,68,0.25)" }} />
+                <span className="text-red-400 text-[9px] font-black uppercase tracking-widest shrink-0">
+                  Prize cutoff
                 </span>
-              )}
-            </div>
+                <div className="flex-1 h-px" style={{ background: "rgba(239,68,68,0.25)" }} />
+              </div>
+            )}
 
-            {/* Team */}
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className={cn("text-sm font-bold truncate", isMe ? "text-brand" : "text-white")}>
-                  {e.team_name ?? "Team"}
-                </p>
-                {isMe && (
-                  <span className="text-[8px] font-black text-brand/70 bg-brand/10 px-1.5 py-0.5 rounded shrink-0">
-                    YOU
+            <div
+              className={cn(
+                "grid grid-cols-[40px_1fr_56px_68px] gap-2 items-center px-4 py-3.5 border-b transition",
+                isMe ? "border-brand/15" : ""
+              )}
+              style={{
+                background: isMe ? "rgba(245,166,35,0.05)" : rank <= winnersCount ? "rgba(34,197,94,0.02)" : "transparent",
+                borderColor: isMe ? undefined : "rgba(255,255,255,0.04)",
+              }}
+            >
+              {/* Rank */}
+              <div>
+                {rank === 1 ? <span className="text-xl">🥇</span>
+                 : rank === 2 ? <span className="text-xl">🥈</span>
+                 : rank === 3 ? <span className="text-xl">🥉</span>
+                 : (
+                  <span className={cn("font-black text-sm", isMe ? "text-brand" : rank <= winnersCount ? "text-green-400" : "text-slate-500")}>
+                    {rank}
                   </span>
                 )}
               </div>
-              {captainName && (
-                <p className="text-slate-500 text-xs truncate mt-0.5">
-                  C: <span className="text-slate-400">{captainName}</span>
-                </p>
-              )}
+
+              {/* Team */}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className={cn("text-sm font-bold truncate", isMe ? "text-brand" : "text-white")}>
+                    {e.team_name ?? "Team"}
+                  </p>
+                  {isMe && (
+                    <span className="text-[8px] font-black text-brand/70 bg-brand/10 px-1.5 py-0.5 rounded shrink-0">
+                      YOU
+                    </span>
+                  )}
+                </div>
+                {captainName && (
+                  <p className="text-slate-500 text-xs truncate mt-0.5">
+                    C: <span className="text-slate-400">{captainName}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Points */}
+              <span className={cn("text-sm font-black text-right tabular-nums", isMe ? "text-brand" : "text-white")}>
+                {e.total_points ?? 0}
+              </span>
+
+              {/* Prize */}
+              <span className={cn("text-sm text-right font-bold tabular-nums",
+                e.prize_won > 0 ? "text-green-400" : "text-slate-700"
+              )}>
+                {e.prize_won > 0 ? formatPrize(e.prize_won) : "—"}
+              </span>
             </div>
-
-            {/* Points */}
-            <span className={cn("text-sm font-black text-right tabular-nums", isMe ? "text-brand" : "text-white")}>
-              {e.total_points ?? 0}
-            </span>
-
-            {/* Prize */}
-            <span className={cn("text-sm text-right font-bold tabular-nums",
-              e.prize_won > 0 ? "text-green-400" : "text-slate-700"
-            )}>
-              {e.prize_won > 0 ? formatPrize(e.prize_won) : "—"}
-            </span>
           </div>
         );
       })}

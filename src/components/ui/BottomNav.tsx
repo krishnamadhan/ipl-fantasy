@@ -18,14 +18,14 @@ export default function BottomNav() {
     <nav
       className="fixed bottom-0 left-0 right-0 z-50"
       style={{
-        background: "rgba(8, 13, 26, 0.96)",
+        background: "rgba(10, 10, 10, 0.97)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
+        borderTop: "1px solid rgba(255,255,255,0.08)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
-      <div className="flex items-stretch justify-around max-w-lg mx-auto h-16">
+      <div className="flex items-stretch justify-around max-w-lg mx-auto h-14">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/dashboard"
@@ -35,35 +35,12 @@ export default function BottomNav() {
             <Link
               key={href}
               href={href}
-              className="flex flex-col items-center justify-center gap-0.5 flex-1 relative py-2 group"
+              className="flex flex-col items-center justify-center gap-0.5 flex-1 py-2 group"
             >
-              {/* Active top indicator */}
-              {active && (
-                <div
-                  className="absolute top-0 left-1/2 -translate-x-1/2 rounded-b-full"
-                  style={{
-                    width: "28px",
-                    height: "3px",
-                    background: "linear-gradient(90deg, #F5A623, #E8950F)",
-                    boxShadow: "0 0 8px rgba(245,166,35,0.5)",
-                  }}
-                />
-              )}
-
-              {/* Active background pill */}
-              {active && (
-                <div
-                  className="absolute inset-x-2 inset-y-1 rounded-2xl"
-                  style={{ background: "rgba(245,166,35,0.06)" }}
-                />
-              )}
-
-              <div className="relative z-10">
-                <Icon active={active} />
-              </div>
+              <Icon active={active} />
               <span
                 className={cn(
-                  "text-[9px] font-bold tracking-wide relative z-10 transition-colors",
+                  "text-[9px] font-bold tracking-wide transition-colors",
                   active ? "text-brand" : "text-slate-600 group-hover:text-slate-400"
                 )}
               >

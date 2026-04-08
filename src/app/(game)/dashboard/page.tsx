@@ -56,20 +56,20 @@ export default async function DashboardPage() {
       {/* ── Header ── */}
       <div className="px-4 pt-6 pb-4 flex items-center justify-between">
         <div>
-          <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">IPL Fantasy 2026</p>
+          <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest">IPL Fantasy 2026</p>
           <h1 className="text-white font-black text-2xl mt-0.5 leading-tight">
             Hey, {firstName} 👋
           </h1>
         </div>
         <Link
           href="/wallet"
-          className="text-right px-4 py-2.5 rounded-2xl border border-brand/25 hover:border-brand/50 transition"
-          style={{ background: "rgba(245,166,35,0.06)" }}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 hover:border-brand/40 transition"
+          style={{ background: "rgba(255,255,255,0.04)" }}
         >
-          <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Balance</p>
-          <p className="text-brand font-black text-lg leading-tight">
-            {formatCurrency(profile?.wallet_balance ?? 0)}
-          </p>
+          <span className="text-brand text-sm font-bold">₹</span>
+          <span className="text-white font-black text-sm tabular-nums">
+            {(profile?.wallet_balance ?? 0).toLocaleString("en-IN")}
+          </span>
         </Link>
       </div>
 

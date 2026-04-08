@@ -314,35 +314,33 @@ export default function ContestBrowseClient({
               )}
 
               <div className="p-4">
-                {/* Prize + type row */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span
-                        className="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border inline-block"
-                        style={{ color: meta.color, background: meta.bg, borderColor: meta.border }}
-                      >
-                        {meta.label}
-                      </span>
-                      {entryCount > 0 && (
-                        <span className="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border inline-block"
-                          style={{ color: "#22C55E", background: "rgba(34,197,94,0.10)", borderColor: "rgba(34,197,94,0.25)" }}>
-                          {entryCount} team{entryCount > 1 ? "s" : ""} joined
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-white font-black text-base leading-tight truncate">{c.name}</p>
-                    {winPct !== null && winPct > 0 && (
-                      <p className="text-slate-500 text-xs mt-0.5">
-                        Top <span className="text-white font-bold">{winPct}%</span> win
-                      </p>
-                    )}
-                  </div>
+                {/* Row 1: type badge + name */}
+                <div className="flex items-center gap-2 mb-3">
+                  <span
+                    className="text-[9px] font-black uppercase px-2 py-0.5 rounded border shrink-0"
+                    style={{ color: meta.color, background: meta.bg, borderColor: meta.border }}
+                  >
+                    {meta.label}
+                  </span>
+                  <p className="text-white font-black text-sm leading-tight truncate flex-1">{c.name}</p>
+                  {entryCount > 0 && (
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded border shrink-0"
+                      style={{ color: "#22C55E", background: "rgba(34,197,94,0.10)", borderColor: "rgba(34,197,94,0.25)" }}>
+                      ✓ {entryCount} in
+                    </span>
+                  )}
+                </div>
 
-                  <div className="text-right shrink-0 ml-3">
+                {/* Row 2: Prize Pool LEFT (dominant) + Entry Fee RIGHT */}
+                <div className="flex items-end justify-between mb-1">
+                  <div>
                     <p
-                      className="font-black text-2xl leading-none"
-                      style={{ color: isMega ? "#C084FC" : "#F5A623" }}
+                      className="font-black leading-none"
+                      style={{
+                        fontSize: "28px",
+                        color: isMega ? "#C084FC" : "#F5A623",
+                        letterSpacing: "-0.02em",
+                      }}
                     >
                       {formatPrize(
                         c.prize_pool > 0
@@ -352,35 +350,48 @@ export default function ContestBrowseClient({
                     </p>
                     <p className="text-slate-600 text-[9px] uppercase tracking-wide mt-0.5">Prize Pool</p>
                   </div>
+                  <div className="text-right">
+                    <p className="text-white font-black text-lg leading-none">
+                      {c.entry_fee === 0
+                        ? <span className="text-green-400">FREE</span>
+                        : `${c.entry_fee.toLocaleString("en-IN")} pts`}
+                    </p>
+                    <p className="text-slate-600 text-[9px] uppercase tracking-wide mt-0.5">Entry</p>
+                  </div>
                 </div>
 
-                {/* Entered teams list (before match locks) */}
+                {/* Row 3: Win% */}
+                {winPct !== null && winPct > 0 && (
+                  <p className="text-slate-500 text-xs mb-3">
+                    Top <span className="text-slate-300 font-semibold">{winPct}%</span> win ·{" "}
+                    <span className="text-slate-300 font-semibold">{winnersCount}</span> winner{winnersCount !== 1 ? "s" : ""}
+                  </p>
+                )}
+
+                {/* Entered teams list */}
                 {entryCount > 0 && (
                   <div className="mb-3 space-y-1.5">
                     {myContestEntries.map((entry) => {
                       const team = myTeams.find((t) => t.id === entry.team_id);
                       return (
                         <div key={entry.id}
-                          className="flex items-center justify-between px-3 py-2 rounded-xl border"
-                          style={{ background: "rgba(34,197,94,0.06)", borderColor: "rgba(34,197,94,0.15)" }}>
+                          className="flex items-center justify-between px-3 py-2 rounded-lg border"
+                          style={{ background: "rgba(34,197,94,0.05)", borderColor: "rgba(34,197,94,0.20)" }}>
                           <div className="flex items-center gap-2 min-w-0">
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0">
-                              <circle cx="6" cy="6" r="5" stroke="#22C55E" strokeWidth="1.5" />
-                              <path d="M3.5 6l2 2 3-3" stroke="#22C55E" strokeWidth="1.5" strokeLinecap="round" />
-                            </svg>
-                            <span className="text-green-400 text-xs font-bold truncate">
+                            <span className="text-green-400 text-xs">✓</span>
+                            <span className="text-green-300 text-xs font-semibold truncate">
                               {team?.team_name ?? entry.team_name ?? "My Team"}
                             </span>
-                            {team && (
-                              <span className="text-slate-600 text-[10px] truncate">
-                                C: {team.captain?.name?.split(" ").pop() ?? "—"}
+                            {team?.captain && (
+                              <span className="text-slate-600 text-[10px] shrink-0">
+                                C: {team.captain.name.split(" ").pop()}
                               </span>
                             )}
                           </div>
                           {matchIsOpen && myTeams.length > 1 && (
                             <button
                               onClick={() => openSwitchSheet(entry)}
-                              className="text-slate-400 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-white/10 hover:border-white/20 hover:text-white transition shrink-0 ml-2"
+                              className="text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded border border-white/10 hover:text-white transition shrink-0 ml-2"
                             >
                               Switch
                             </button>
@@ -391,95 +402,56 @@ export default function ContestBrowseClient({
                   </div>
                 )}
 
-                {/* Top 3 prize tiers */}
-                {tiers.length > 0 && (
-                  <div className="flex gap-1.5 mb-3 overflow-x-auto scrollbar-none">
-                    {tiers.slice(0, 3).map((t: any, i: number) => (
-                      <div
-                        key={i}
-                        className="flex-shrink-0 rounded-xl px-3 py-1.5 border"
-                        style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)" }}
-                      >
-                        <p className="text-[9px] text-slate-500 uppercase font-black">{t.label ?? `#${t.minRank}`}</p>
-                        <p
-                          className="text-sm font-black"
-                          style={{ color: i === 0 ? "#22C55E" : "#94A3B8" }}
-                        >
-                          {formatPrize(t.prizeAmount)}
-                        </p>
-                      </div>
-                    ))}
-                    {tiers.length > 3 && (
-                      <div className="flex-shrink-0 rounded-xl px-3 py-1.5 border flex items-center"
-                        style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)" }}>
-                        <p className="text-slate-500 text-xs font-bold">+{tiers.length - 3}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Spots fill bar */}
+                {/* Fill bar */}
                 <div className="mb-3">
-                  <div className="flex justify-between text-[10px] mb-1.5">
-                    <span className="text-slate-500">
-                      <span className="text-white font-semibold">{c.entry_count ?? 0}</span> joined
-                    </span>
-                    <span
-                      className={cn("font-semibold",
-                        isFull ? "text-red-400" : isAlmostFull ? "text-orange-400" : "text-slate-500"
-                      )}
-                    >
-                      {isFull ? "FULL" : `${spotsLeft} left`}
-                    </span>
-                  </div>
-                  <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <div className="h-1.5 rounded-full overflow-hidden mb-1.5" style={{ background: "rgba(255,255,255,0.07)" }}>
                     <div
                       className="h-full rounded-full transition-all"
                       style={{
                         width: `${fillPct}%`,
-                        background: isFull || isAlmostFull
-                          ? "#EF4444"
-                          : fillPct > 60
-                          ? "#F97316"
-                          : isMega
-                          ? "#C084FC"
-                          : "#F5A623",
+                        background: isFull || isAlmostFull ? "#EF4444"
+                          : fillPct > 70 ? "#F97316"
+                          : isMega ? "#C084FC"
+                          : "#22C55E",
                       }}
                     />
                   </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-slate-600">
+                      <span className="text-slate-400 font-semibold">{c.entry_count ?? 0}</span> joined
+                    </span>
+                    <span className={cn("font-semibold",
+                      isFull ? "text-red-400" : isAlmostFull ? "text-orange-400" : "text-slate-600"
+                    )}>
+                      {isFull ? "FULL" : `${spotsLeft} spots left`}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Entry fee + CTA */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-slate-500 text-[9px] uppercase tracking-wide font-bold">Entry</p>
-                    <p className="text-white font-black text-lg leading-none">
-                      {c.entry_fee === 0 ? (
-                        <span className="text-green-400">FREE</span>
-                      ) : (
-                        `${c.entry_fee.toLocaleString("en-IN")} pts`
-                      )}
-                    </p>
-                  </div>
-
+                {/* CTA — right aligned, compact */}
+                <div className="flex justify-end">
                   {!matchIsOpen ? (
-                    <span className="text-orange-400 text-sm font-bold px-5 py-2.5 rounded-xl border border-orange-500/30"
-                      style={{ background: "rgba(249,115,22,0.08)" }}>
-                      {match.status === "locked" ? "Locked 🔒" : match.status === "live" ? "Live 🔴" : "Closed"}
+                    <span className="text-slate-500 text-xs font-bold px-4 py-2 rounded-lg border border-white/8"
+                      style={{ background: "rgba(255,255,255,0.03)" }}>
+                      {match.status === "locked" ? "Locked 🔒" : match.status === "live" ? "View Live →" : "Closed"}
                     </span>
                   ) : isFull ? (
-                    <span className="text-slate-600 text-sm font-bold px-5 py-2.5 rounded-xl border border-white/10">Full</span>
+                    <span className="text-slate-600 text-xs font-bold px-4 py-2 rounded-lg border border-white/8">Full</span>
                   ) : myTeams.length === 0 ? (
                     <Link
                       href={`/team-builder/${match.id}`}
-                      className="bg-brand text-white text-sm font-black px-5 py-2.5 rounded-xl shadow-lg shadow-brand/25 hover:bg-amber-500 transition"
+                      className="text-white text-sm font-black px-5 py-2 rounded-lg shadow-lg transition hover:opacity-90"
+                      style={{
+                        background: "linear-gradient(135deg, #F5A623, #E8950F)",
+                        boxShadow: "0 4px 12px rgba(245,166,35,0.30)",
+                      }}
                     >
                       Build Team
                     </Link>
                   ) : canJoinMore && hasUnjoinedTeams ? (
                     <button
                       onClick={() => openJoinSheet(c.id)}
-                      className="text-white text-sm font-black px-6 py-2.5 rounded-xl shadow-lg transition hover:opacity-90"
+                      className="text-white text-sm font-black px-5 py-2 rounded-lg shadow-lg transition hover:opacity-90"
                       style={{
                         background: entryCount > 0
                           ? "linear-gradient(135deg, #22C55E, #16A34A)"
@@ -488,28 +460,24 @@ export default function ContestBrowseClient({
                           : "linear-gradient(135deg, #F5A623, #E8950F)",
                         boxShadow: entryCount > 0
                           ? "0 4px 12px rgba(34,197,94,0.30)"
-                          : isMega
-                          ? "0 4px 12px rgba(168,85,247,0.30)"
                           : "0 4px 12px rgba(245,166,35,0.30)",
                       }}
                     >
                       {entryCount > 0 ? "+ Add Team" : "Join →"}
                     </button>
                   ) : atLimit ? (
-                    <span className="text-slate-500 text-xs font-bold px-3 py-2.5 rounded-xl border border-white/10">
+                    <span className="text-slate-600 text-xs font-bold px-4 py-2 rounded-lg border border-white/8">
                       Max {MAX_TEAMS_PER_CONTEST} teams
                     </span>
                   ) : entryCount > 0 ? null : (
                     <button
                       onClick={() => openJoinSheet(c.id)}
-                      className="text-white text-sm font-black px-6 py-2.5 rounded-xl shadow-lg transition hover:opacity-90"
+                      className="text-white text-sm font-black px-5 py-2 rounded-lg shadow-lg transition hover:opacity-90"
                       style={{
                         background: isMega
                           ? "linear-gradient(135deg, #A855F7, #6366F1)"
                           : "linear-gradient(135deg, #F5A623, #E8950F)",
-                        boxShadow: isMega
-                          ? "0 4px 12px rgba(168,85,247,0.30)"
-                          : "0 4px 12px rgba(245,166,35,0.30)",
+                        boxShadow: "0 4px 12px rgba(245,166,35,0.30)",
                       }}
                     >
                       Join →
