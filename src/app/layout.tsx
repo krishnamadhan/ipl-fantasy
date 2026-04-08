@@ -1,5 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import { Rajdhani } from "next/font/google";
 import "./globals.css";
+
+const rajdhani = Rajdhani({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-rajdhani",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "IPL Fantasy",
@@ -8,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0F172A",
+  themeColor: "#080D1A",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -16,7 +24,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={rajdhani.variable}>
       <body className="bg-surface text-white min-h-screen antialiased">
         {children}
       </body>

@@ -18,9 +18,7 @@ export default function BottomNav() {
     <nav
       className="fixed bottom-0 left-0 right-0 z-50"
       style={{
-        background: "rgba(10, 10, 10, 0.97)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
+        background: "#080D1A",
         borderTop: "1px solid rgba(255,255,255,0.08)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
@@ -35,12 +33,28 @@ export default function BottomNav() {
             <Link
               key={href}
               href={href}
-              className="flex flex-col items-center justify-center gap-0.5 flex-1 py-2 group"
+              className="flex flex-col items-center justify-center gap-0.5 flex-1 py-2 group relative"
             >
-              <Icon active={active} />
+              {/* Active top bar */}
+              {active && (
+                <span
+                  className="absolute top-0 left-1/2 -translate-x-1/2 rounded-b-full"
+                  style={{ width: 20, height: 3, background: "#F5A623" }}
+                />
+              )}
+              {/* Active pill bg */}
+              {active && (
+                <span
+                  className="absolute inset-x-1 rounded-xl"
+                  style={{ top: 8, height: 36, background: "rgba(245,166,35,0.08)" }}
+                />
+              )}
+              <span className="relative z-10">
+                <Icon active={active} />
+              </span>
               <span
                 className={cn(
-                  "text-[9px] font-bold tracking-wide transition-colors",
+                  "relative z-10 text-[9px] font-bold tracking-wide transition-colors font-rajdhani",
                   active ? "text-brand" : "text-slate-600 group-hover:text-slate-400"
                 )}
               >
