@@ -79,7 +79,18 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     updates.status = mapStatus(stateStr, startMs ? Number(startMs) : undefined);
   }
 
-  if (mi.tossResults?.tossWinnerName) updates.toss_winner = mi.tossResults.tossWinnerName;
+  if (mi.tossResults?.tossWinnerName) {
+    updates.toss_winner = mi.tossResults.tossWinnerName;
+    // Set toss_detected_at only if not already set (marks when toss was first seen)
+    const { data: existing } = await service
+      .from("f11_matches")
+      .select("toss_detected_at")
+      .eq("id", id)
+      .single();
+    if (!existing?.toss_detected_at) {
+      updates.toss_detected_at = new Date().toISOString();
+    }
+  }
   if (mi.matchWinner) updates.winner = mi.matchWinner;
   if (mi.status) updates.result_summary = mi.status;
   if (mi.venueInfo?.ground) updates.venue = mi.venueInfo.ground;
