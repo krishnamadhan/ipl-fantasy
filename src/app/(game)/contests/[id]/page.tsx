@@ -19,7 +19,7 @@ export default async function ContestDetailPage({ params }: { params: Promise<{ 
   if (!contest) notFound();
 
   const match = contest.match;
-  const showTeams = ["live", "in_review", "completed"].includes(match?.status ?? "");
+  const showTeams = ["locked", "live", "in_review", "completed"].includes(match?.status ?? "");
 
   const [entriesRes, myEntriesRes] = await Promise.all([
     supabase

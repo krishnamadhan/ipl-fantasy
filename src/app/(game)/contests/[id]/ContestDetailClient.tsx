@@ -34,7 +34,8 @@ export default function ContestDetailClient({
   const isLive = matchStatus === "live";
   const isCompleted = matchStatus === "completed";
   const isInReview = matchStatus === "in_review";
-  const showTeams = isLive || isCompleted || isInReview;
+  const isLocked = matchStatus === "locked";
+  const showTeams = isLocked || isLive || isCompleted || isInReview;
 
   const refreshLeaderboard = useCallback(async () => {
     try {
