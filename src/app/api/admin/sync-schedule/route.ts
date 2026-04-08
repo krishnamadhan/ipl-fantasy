@@ -12,6 +12,16 @@ function cbHeaders() {
   };
 }
 
+async function safeJson(res: Response): Promise<any> {
+  try {
+    const text = await res.text();
+    if (!text || !text.trim()) return {};
+    return JSON.parse(text);
+  } catch {
+    return {};
+  }
+}
+
 function msToISO(ms: string | number) {
   return new Date(Number(ms)).toISOString();
 }
@@ -69,17 +79,16 @@ export async function POST() {
       fetch(`${CB_BASE}/matches/v1/live`, { headers: cbHeaders() }),
     ]);
 
-    if (!upRes.ok || !liveRes.ok) {
-      const errText = await (upRes.ok ? liveRes : upRes).text();
-      return NextResponse.json({ error: `Cricbuzz API error: ${errText}` }, { status: 500 });
-    }
-
-    async function safeJson(res: Response): Promise<any> {
-      const text = await res.text();
-      if (!text.trim()) return {};
-      try { return JSON.parse(text); } catch { return {}; }
-    }
+    // Parse both responses regardless — safeJson handles empty/truncated bodies
     const [upData, liveData] = await Promise.all([safeJson(upRes), safeJson(liveRes)]);
+
+    if (!upRes.ok || !liveRes.ok) {
+      const failedStatus = !upRes.ok ? upRes.status : liveRes.status;
+      return NextResponse.json(
+        { error: `Cricbuzz API returned ${failedStatus}`, upOk: upRes.ok, liveOk: liveRes.ok },
+        { status: 500 }
+      );
+    }
     const all = [...extractMatchInfos(upData), ...extractMatchInfos(liveData)];
 
     // Filter to IPL matches
