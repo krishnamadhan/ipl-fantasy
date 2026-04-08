@@ -18,6 +18,17 @@ export default function AdminContestActions({ contest }: { contest: any }) {
     } finally { setLoading(false); }
   }
 
+  async function deleteContest() {
+    if (!confirm(`Permanently delete "${contest.name}" and all its entries? This cannot be undone.`)) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/contests/${contest.id}/delete`, { method: "DELETE" });
+      const d = await res.json();
+      if (d.ok) { toast.success(`Deleted "${d.deleted}"`); router.refresh(); }
+      else toast.error(d.error);
+    } finally { setLoading(false); }
+  }
+
   async function payout() {
     if (!confirm(`Distribute prizes for "${contest.name}"?`)) return;
     setLoading(true);
@@ -41,6 +52,12 @@ export default function AdminContestActions({ contest }: { contest: any }) {
         <button onClick={cancel} disabled={loading}
           className="text-xs bg-red-500/20 border border-red-500/30 text-red-400 px-3 py-1.5 rounded-lg disabled:opacity-50">
           {loading ? "…" : "Cancel & Refund"}
+        </button>
+      )}
+      {["completed", "cancelled"].includes(contest.status) && (
+        <button onClick={deleteContest} disabled={loading}
+          className="text-xs bg-red-900/30 border border-red-800/50 text-red-500 px-3 py-1.5 rounded-lg disabled:opacity-50">
+          {loading ? "…" : "🗑 Delete"}
         </button>
       )}
     </div>
