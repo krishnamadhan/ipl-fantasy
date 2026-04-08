@@ -324,7 +324,7 @@ function LeaderboardTab({
       {entries.map((e, i) => {
         const isMe = e.user_id === currentUserId;
         const rank = e.rank ?? i + 1;
-        const captainName = e.captain_name ?? null;
+        const captainName = e.captain?.name ?? null;
         // Insert winner zone divider AFTER the last winning rank
         const showWinnerDivider = winnersCount > 0 && rank === winnersCount + 1;
 

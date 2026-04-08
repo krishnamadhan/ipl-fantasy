@@ -39,6 +39,7 @@ export default async function ContestsPage() {
 
   const live    = [...byMatch.values()].filter((g) => g.match.status === "live");
   const active  = [...byMatch.values()].filter((g) => ["scheduled", "open", "locked"].includes(g.match.status));
+  const review  = [...byMatch.values()].filter((g) => g.match.status === "in_review");
   const done    = [...byMatch.values()].filter((g) => g.match.status === "completed");
 
   return (
@@ -66,6 +67,9 @@ export default async function ContestsPage() {
         <div className="px-4 space-y-6 pt-2">
           {live.length > 0 && (
             <Section label="🔴 Live" groups={live} />
+          )}
+          {review.length > 0 && (
+            <Section label="⏳ In Review" groups={review} />
           )}
           {active.length > 0 && (
             <Section label="Upcoming" groups={active} />

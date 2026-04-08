@@ -24,13 +24,14 @@ export default async function ContestDetailPage({ params }: { params: Promise<{ 
   const [entriesRes, myEntriesRes] = await Promise.all([
     supabase
       .from("f11_entries")
-      .select("id, user_id, team_name, total_points, rank, prize_won, captain_id")
+      .select("id, user_id, team_name, total_points, rank, prize_won, captain:f11_players!captain_id(name)")
       .eq("contest_id", id)
+      .order("rank", { ascending: true, nullsFirst: false })
       .order("total_points", { ascending: false })
       .limit(100),
     supabase
       .from("f11_entries")
-      .select("id, user_id, team_name, total_points, rank, prize_won, captain_id")
+      .select("id, user_id, team_name, total_points, rank, prize_won, captain:f11_players!captain_id(name)")
       .eq("contest_id", id)
       .eq("user_id", user.id),
   ]);
