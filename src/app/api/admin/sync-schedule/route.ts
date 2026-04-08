@@ -74,7 +74,12 @@ export async function POST() {
       return NextResponse.json({ error: `Cricbuzz API error: ${errText}` }, { status: 500 });
     }
 
-    const [upData, liveData] = await Promise.all([upRes.json(), liveRes.json()]);
+    async function safeJson(res: Response): Promise<any> {
+      const text = await res.text();
+      if (!text.trim()) return {};
+      try { return JSON.parse(text); } catch { return {}; }
+    }
+    const [upData, liveData] = await Promise.all([safeJson(upRes), safeJson(liveRes)]);
     const all = [...extractMatchInfos(upData), ...extractMatchInfos(liveData)];
 
     // Filter to IPL matches

@@ -47,6 +47,10 @@ export default function ContestBrowseClient({
   const router = useRouter();
   const [typeFilter, setTypeFilter] = useState("all");
 
+  function goToContest(contestId: string) {
+    router.push(`/contests/${contestId}`);
+  }
+
   // Join sheet state
   const [joiningContestId, setJoiningContestId] = useState<string | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
@@ -285,7 +289,7 @@ export default function ContestBrowseClient({
           return (
             <div
               key={c.id}
-              className="rounded-2xl overflow-hidden border"
+              className="rounded-2xl overflow-hidden border cursor-pointer active:opacity-80 transition-opacity"
               style={{
                 background: isMega
                   ? "linear-gradient(160deg, #1a1040 0%, #111827 60%)"
@@ -294,6 +298,7 @@ export default function ContestBrowseClient({
                   ? "rgba(34,197,94,0.30)"
                   : isMega ? "rgba(192,132,252,0.25)" : "rgba(255,255,255,0.06)",
               }}
+              onClick={() => goToContest(c.id)}
             >
               {/* Guaranteed badge strip */}
               {c.guaranteed_pool && (
@@ -390,7 +395,7 @@ export default function ContestBrowseClient({
                           </div>
                           {matchIsOpen && myTeams.length > 1 && (
                             <button
-                              onClick={() => openSwitchSheet(entry)}
+                              onClick={(e) => { e.stopPropagation(); openSwitchSheet(entry); }}
                               className="text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded border border-white/10 hover:text-white transition shrink-0 ml-2"
                             >
                               Switch
@@ -428,8 +433,8 @@ export default function ContestBrowseClient({
                   </div>
                 </div>
 
-                {/* CTA — right aligned, compact */}
-                <div className="flex justify-end">
+                {/* CTA — right aligned, compact. stopPropagation so card click → detail, button click → join */}
+                <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
                   {!matchIsOpen ? (
                     <span className="text-slate-500 text-xs font-bold px-4 py-2 rounded-lg border border-white/8"
                       style={{ background: "rgba(255,255,255,0.03)" }}>
@@ -440,6 +445,7 @@ export default function ContestBrowseClient({
                   ) : myTeams.length === 0 ? (
                     <Link
                       href={`/team-builder/${match.id}`}
+                      onClick={(e) => e.stopPropagation()}
                       className="text-white text-sm font-black px-5 py-2 rounded-lg shadow-lg transition hover:opacity-90"
                       style={{
                         background: "linear-gradient(135deg, #F5A623, #E8950F)",
@@ -450,7 +456,7 @@ export default function ContestBrowseClient({
                     </Link>
                   ) : canJoinMore && hasUnjoinedTeams ? (
                     <button
-                      onClick={() => openJoinSheet(c.id)}
+                      onClick={(e) => { e.stopPropagation(); openJoinSheet(c.id); }}
                       className="text-white text-sm font-black px-5 py-2 rounded-lg shadow-lg transition hover:opacity-90"
                       style={{
                         background: entryCount > 0
@@ -471,7 +477,7 @@ export default function ContestBrowseClient({
                     </span>
                   ) : entryCount > 0 ? null : (
                     <button
-                      onClick={() => openJoinSheet(c.id)}
+                      onClick={(e) => { e.stopPropagation(); openJoinSheet(c.id); }}
                       className="text-white text-sm font-black px-5 py-2 rounded-lg shadow-lg transition hover:opacity-90"
                       style={{
                         background: isMega
