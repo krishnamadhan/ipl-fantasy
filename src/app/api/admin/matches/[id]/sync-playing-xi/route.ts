@@ -228,9 +228,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Match has no Cricbuzz ID" }, { status: 400 });
   }
 
-  // Do not sync playing XI until toss has been confirmed — Cricbuzz returns probable XI
-  // before the toss via mcenter, which would pollute f11_match_players with incorrect data.
-  if (!match.toss_winner) {
+  // Cron-triggered syncs are blocked until toss is confirmed — Cricbuzz returns probable XI
+  // before toss, which would pollute f11_match_players. Admin manual triggers bypass this.
+  if (isInternalCron && !match.toss_winner) {
     return NextResponse.json({
       ok: false,
       message: "Toss has not happened yet — playing XI sync skipped",
