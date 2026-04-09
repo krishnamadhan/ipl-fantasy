@@ -64,11 +64,23 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
         continue;
       }
 
-      const tiers = calcPrizeTiers(contest.prize_pool, contest.prize_pool_type, entries.length);
-      let totalPaid = 0;
+      // Ensure ranks are fresh before paying out
+      await service.rpc("f11_update_leaderboard", { p_match_id: id });
 
-      for (const entry of entries) {
-        const rank = entry.rank ?? (entries.findIndex((e) => e.id === entry.id) + 1);
+      // Re-fetch entries with updated ranks
+      const { data: rankedEntries } = await service
+        .from("f11_entries")
+        .select("id, user_id, rank, total_points")
+        .eq("contest_id", contest.id)
+        .order("total_points", { ascending: false });
+
+      const finalEntries = rankedEntries ?? entries;
+      const tiers = calcPrizeTiers(contest.prize_pool, contest.prize_pool_type, finalEntries.length);
+      let totalPaid = 0;
+      const creditErrors: string[] = [];
+
+      for (const entry of finalEntries) {
+        const rank = entry.rank ?? (finalEntries.findIndex((e) => e.id === entry.id) + 1);
         const tier = tiers.find((t) => rank >= t.minRank && rank <= t.maxRank);
         if (!tier || tier.perPlayerAmount <= 0) continue;
 
@@ -81,16 +93,21 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
         if (!creditErr) {
           await service.from("f11_entries").update({ prize_won: tier.perPlayerAmount }).eq("id", entry.id);
           totalPaid += tier.perPlayerAmount;
+        } else {
+          creditErrors.push(`user ${entry.user_id} rank ${rank}: ${creditErr.message}`);
         }
       }
 
-      // Mark paid to prevent double-payout
-      await service
-        .from("f11_contests")
-        .update({ winner_paid_at: new Date().toISOString() })
-        .eq("id", contest.id);
-
-      payoutResults.push({ contestId: contest.id, ok: true, paid: totalPaid });
+      // Only stamp winner_paid_at if no credit errors — allows admin to retry on failure
+      if (creditErrors.length === 0) {
+        await service
+          .from("f11_contests")
+          .update({ winner_paid_at: new Date().toISOString() })
+          .eq("id", contest.id);
+        payoutResults.push({ contestId: contest.id, ok: true, paid: totalPaid });
+      } else {
+        payoutResults.push({ contestId: contest.id, ok: false, paid: totalPaid, creditErrors });
+      }
     } catch (err: any) {
       payoutResults.push({ contestId: contest.id, ok: false, error: err.message });
     }
