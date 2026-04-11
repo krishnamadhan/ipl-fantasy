@@ -128,43 +128,103 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* ── My active contests ── */}
+      {/* ── Phase 6: Your Contests — horizontal scroll ── */}
       {activeEntries.length > 0 && (
-        <div className="px-4 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-black uppercase tracking-wider" style={{ color: "#8A95A8" }}>My Contests</p>
+        <div className="mb-5">
+          {/* Section header */}
+          <div className="flex items-center justify-between px-4 mb-3">
+            <div>
+              <p className="text-white font-rajdhani font-bold text-base leading-none">Your Contests</p>
+              <p className="text-[10px] mt-0.5" style={{ color: "#8A95A8" }}>Across all active matches</p>
+            </div>
             <Link href="/contests" className="text-xs font-bold" style={{ color: "#3FEFB4" }}>View all →</Link>
           </div>
-          <div className="space-y-2">
+
+          {/* Horizontal scroll strip */}
+          <div className="flex gap-3 px-4 overflow-x-auto no-scrollbar pb-1">
             {activeEntries.map((e: any) => {
               const c = e.contest;
               const m = Array.isArray(c?.match) ? c.match[0] : c?.match;
+              const rank = e.rank as number | null;
+              const pts  = e.total_points ?? 0;
+
+              // Derive status + colors from rank
+              const isWinning  = rank === 1;
+              const isSafe     = rank !== null && rank <= 3;
+              const isTrailing = rank !== null && rank > 3;
+              const noRank     = rank === null;
+
+              const statusLabel = isWinning ? "🏆 Winning" : isSafe ? "✅ Safe" : isTrailing ? "📉 Trailing" : "Joined";
+              const statusColor = isWinning ? "#3FEFB4" : isSafe ? "#21C55D" : isTrailing ? "#F7A325" : "#8A95A8";
+              const statusBg    = isWinning ? "rgba(63,239,180,0.15)" : isSafe ? "rgba(33,197,93,0.12)" : isTrailing ? "rgba(247,163,37,0.12)" : "rgba(255,255,255,0.05)";
+              const leftBorder  = isWinning ? "#3FEFB4" : isSafe ? "#21C55D" : isTrailing ? "#F7A325" : "#252D3D";
+              const rankColor   = isWinning ? "#3FEFB4" : isSafe ? "#21C55D" : isTrailing ? "#F7A325" : "#F0F4FF";
+
               return (
-                <Link key={e.id} href={`/contests/${c.id}`}
-                  className="flex items-center justify-between rounded-2xl px-4 py-3.5 border transition"
-                  style={{ background: "rgba(255,255,255,0.025)", borderColor: "rgba(255,255,255,0.06)" }}
+                <Link
+                  key={e.id}
+                  href={`/contests/${c.id}`}
+                  className="shrink-0 flex flex-col justify-between rounded-xl p-3 card-press"
+                  style={{
+                    minWidth:   208,
+                    background: "#141920",
+                    border:     "1px solid #252D3D",
+                    borderLeft: `3px solid ${leftBorder}`,
+                  }}
                 >
-                  <div className="min-w-0">
-                    <p className="text-white font-bold text-sm truncate">{c.name}</p>
+                  {/* TOP — match + contest name */}
+                  <div className="mb-3">
                     {m && (
-                      <p className="text-xs mt-0.5" style={{ color: "#4A5568" }}>
+                      <p className="text-[10px] truncate mb-0.5" style={{ color: "#8A95A8" }}>
                         {shortTeam(m.team_home)} vs {shortTeam(m.team_away)}
                       </p>
                     )}
+                    <p className="text-white font-rajdhani font-bold text-sm leading-tight truncate">{c.name}</p>
                   </div>
-                  <div className="text-right shrink-0 ml-3">
-                    {e.rank ? (
-                      <>
-                        <p className="font-rajdhani font-bold text-lg leading-none" style={{ color: "#3FEFB4" }}>#{e.rank}</p>
-                        <p className="text-xs" style={{ color: "#8A95A8" }}>{e.total_points} pts</p>
-                      </>
+
+                  {/* MIDDLE — rank + points */}
+                  <div className="mb-3">
+                    {noRank ? (
+                      <p className="font-rajdhani text-sm" style={{ color: "#8A95A8" }}>Awaiting start</p>
                     ) : (
-                      <p className="text-xs" style={{ color: "#8A95A8" }}>{formatCurrency(c.prize_pool)}</p>
+                      <>
+                        <p className="font-rajdhani font-bold text-2xl leading-none" style={{ color: rankColor }}>
+                          #{rank}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: "#8A95A8" }}>{pts} pts</p>
+                      </>
                     )}
+                  </div>
+
+                  {/* BOTTOM — status chip + View link */}
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ color: statusColor, background: statusBg, border: `1px solid ${statusColor}30` }}
+                    >
+                      {statusLabel}
+                    </span>
+                    <span className="text-[10px] font-bold" style={{ color: "#3FEFB4" }}>View →</span>
                   </div>
                 </Link>
               );
             })}
+
+            {/* "Join more" end card */}
+            <Link
+              href="/matches"
+              className="shrink-0 flex flex-col items-center justify-center rounded-xl card-press gap-2"
+              style={{
+                minWidth:   120,
+                background: "rgba(63,239,180,0.04)",
+                border:     "1px dashed rgba(63,239,180,0.20)",
+              }}
+            >
+              <span className="text-2xl">+</span>
+              <span className="text-[10px] font-bold text-center leading-tight" style={{ color: "#3FEFB4" }}>
+                Join More
+              </span>
+            </Link>
           </div>
         </div>
       )}
