@@ -53,24 +53,12 @@ export default async function DashboardPage() {
   return (
     <div className="max-w-lg mx-auto pb-24" style={{ background: "#080d1a", minHeight: "100vh" }}>
 
-      {/* ── Header ── */}
-      <div className="px-4 pt-6 pb-4 flex items-center justify-between">
-        <div>
-          <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest">IPL Fantasy 2026</p>
-          <h1 className="text-white font-black text-2xl mt-0.5 leading-tight">
-            Hey, {firstName} 👋
-          </h1>
-        </div>
-        <Link
-          href="/wallet"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 hover:border-brand/40 transition"
-          style={{ background: "rgba(255,255,255,0.04)" }}
-        >
-          <span className="text-brand text-sm font-bold">₹</span>
-          <span className="text-white font-black text-sm tabular-nums">
-            {(profile?.wallet_balance ?? 0).toLocaleString("en-IN")}
-          </span>
-        </Link>
+      {/* ── Greeting ── */}
+      <div className="px-4 pt-5 pb-2">
+        <p className="text-white font-black text-xl leading-tight">
+          Hey, {firstName} 👋
+        </p>
+        <p className="text-[#8A95A8] text-xs mt-0.5">IPL 2026 · Ready to play?</p>
       </div>
 
       {/* ── LIVE banner — Realtime client component, self-updating ── */}

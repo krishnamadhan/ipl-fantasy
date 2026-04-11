@@ -46,10 +46,10 @@ export default async function MatchesPage() {
 
   return (
     <div className="max-w-lg mx-auto pb-24" style={{ background: "#080d1a", minHeight: "100vh" }}>
-      {/* Header */}
-      <div className="px-4 pt-6 pb-4">
-        <p className="text-slate-500 text-xs font-black uppercase tracking-widest">IPL Fantasy 2026</p>
-        <h1 className="text-white font-black text-2xl mt-0.5">Matches</h1>
+      {/* Page title */}
+      <div className="px-4 pt-5 pb-3">
+        <h1 className="text-white font-rajdhani font-bold text-2xl leading-none">Matches</h1>
+        <p className="text-[#8A95A8] text-xs mt-0.5">IPL 2026 Schedule</p>
       </div>
 
       {upcoming.length > 0 && (
