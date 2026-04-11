@@ -2,7 +2,15 @@
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils/format";
 
-export default function CountdownTimer({ targetDate, compact = false }: { targetDate: string; compact?: boolean }) {
+export default function CountdownTimer({
+  targetDate,
+  compact = false,
+  hero = false,
+}: {
+  targetDate: string;
+  compact?: boolean;
+  hero?: boolean;
+}) {
   const [timeLeft, setTimeLeft] = useState(getTimeLeft(targetDate));
 
   useEffect(() => {
@@ -10,7 +18,27 @@ export default function CountdownTimer({ targetDate, compact = false }: { target
     return () => clearInterval(id);
   }, [targetDate]);
 
-  if (timeLeft.total <= 0) return <span className="text-red-400 text-xs font-bold">Starting…</span>;
+  if (timeLeft.total <= 0) {
+    if (hero) return <span className="font-rajdhani font-bold text-xl" style={{ color: "#FF3B3B" }}>Starting…</span>;
+    return <span className="text-red-400 text-xs font-bold">Starting…</span>;
+  }
+
+  // Hero variant — inline "02h 34m 15s" with urgency color
+  if (hero) {
+    const urgent15 = timeLeft.total < 15 * 60 * 1000;
+    const urgent60 = timeLeft.total < 60 * 60 * 1000;
+    const color = urgent15 ? "#FF3B3B" : urgent60 ? "#F7A325" : "#F0F4FF";
+    const parts: string[] = [];
+    if (timeLeft.days  > 0) parts.push(`${timeLeft.days}d`);
+    if (timeLeft.hours > 0 || timeLeft.days > 0) parts.push(`${String(timeLeft.hours).padStart(2, "0")}h`);
+    parts.push(`${String(timeLeft.minutes).padStart(2, "0")}m`);
+    parts.push(`${String(timeLeft.seconds).padStart(2, "0")}s`);
+    return (
+      <span className="font-rajdhani font-bold text-2xl tabular-nums leading-none" style={{ color }}>
+        {parts.join("  ")}
+      </span>
+    );
+  }
 
   const urgent = timeLeft.total < 60 * 60 * 1000; // < 1 hour
 
