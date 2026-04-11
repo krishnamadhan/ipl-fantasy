@@ -1,11 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Rajdhani } from "next/font/google";
+import { Rajdhani, Inter } from "next/font/google";
 import "./globals.css";
 
 const rajdhani = Rajdhani({
   weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
   variable: "--font-rajdhani",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -24,7 +30,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={rajdhani.variable}>
+    <html lang="en" className={`${rajdhani.variable} ${inter.variable}`}>
       <body className="bg-surface text-white min-h-screen antialiased">
         {children}
       </body>
