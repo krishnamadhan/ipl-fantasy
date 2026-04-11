@@ -48,9 +48,8 @@ export default async function DashboardPage() {
       .from("f11_entries")
       .select("id, total_points, rank, contest:f11_contests(id, name, status, prize_pool, match:f11_matches(id, team_home, team_away))")
       .eq("user_id", user.id)
-      .in("contest.status", ["open", "locked", "live"])
       .order("created_at", { ascending: false })
-      .limit(5),
+      .limit(10),
     // Leaderboard: aggregate completed entries per user (lightweight)
     (supabase as any)
       .from("f11_entries")
@@ -61,7 +60,10 @@ export default async function DashboardPage() {
 
   const heroContests     = (heroContestsRes as any).data ?? [];
   const heroTeam         = (heroTeamRes as any).data ?? [];
-  const activeEntries    = ((myEntriesRes as any).data ?? []).filter((e: any) => e.contest);
+  const allEntries       = ((myEntriesRes as any).data ?? []) as any[];
+  const activeEntries    = allEntries.filter(
+    (e: any) => e.contest && ["open", "locked", "live"].includes(e.contest.status)
+  );
   const heroContestCount = heroContests.length;
   const heroTotalPrize   = heroContests.reduce((s: number, c: any) => s + (c.prize_pool ?? 0), 0);
   const hasTeam          = heroTeam.length > 0;
@@ -70,6 +72,7 @@ export default async function DashboardPage() {
   const lbRows = (lbEntriesRes as any).data ?? [];
   const lbMap  = new Map<string, { userId: string; totalPoints: number; totalWinnings: number }>();
   for (const row of lbRows) {
+    if (!row.user_id) continue;
     const prev = lbMap.get(row.user_id) ?? { userId: row.user_id, totalPoints: 0, totalWinnings: 0 };
     lbMap.set(row.user_id, {
       ...prev,
@@ -82,10 +85,13 @@ export default async function DashboardPage() {
   const top5    = lbSorted.slice(0, 5);
   const myLbIdx = lbSorted.findIndex((r) => r.userId === user.id);
   // If current user is outside top 5, append them
-  if (myLbIdx >= 5) top5.push(lbSorted[myLbIdx]);
+  if (myLbIdx >= 5) {
+    const myRow = lbSorted[myLbIdx];
+    if (myRow) top5.push(myRow);
+  }
 
   // Fetch profile names for leaderboard users
-  const lbUserIds = [...new Set(top5.map((r) => r.userId))];
+  const lbUserIds = [...new Set(top5.map((r) => r.userId).filter(Boolean))];
   const { data: lbProfiles } = lbUserIds.length
     ? await supabase.from("f11_profiles").select("id, username, display_name").in("id", lbUserIds)
     : { data: [] };

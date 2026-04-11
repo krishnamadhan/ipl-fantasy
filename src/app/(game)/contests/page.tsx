@@ -43,7 +43,7 @@ export default async function ContestsPage() {
   const done    = [...byMatch.values()].filter((g) => g.match.status === "completed");
 
   return (
-    <div className="max-w-lg mx-auto pb-24" style={{ background: "#0a0f1e", minHeight: "100vh" }}>
+    <div className="max-w-lg mx-auto pb-24" style={{ background: "#0B0E14", minHeight: "100vh" }}>
       {/* Header */}
       <div className="px-4 pt-6 pb-2 flex items-center justify-between">
         <h1 className="text-white font-black text-xl">My Contests</h1>

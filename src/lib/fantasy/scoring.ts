@@ -98,6 +98,9 @@ export function calcFantasyPoints(
   bd.bowling.wickets = stats.wickets * 25;
 
   // Haul bonus (on top of individual wicket points)
+  // 5-wkt: +16, 4-wkt: +8 — both explicitly in spec section 8.2.
+  // 3-wkt: +4 — NOT listed in the spec table but IS standard Dream11 IPL practice.
+  // Keep until spec is updated or confirmed otherwise.
   if (stats.wickets >= 5) {
     bd.bowling.haul_bonus = 16;
   } else if (stats.wickets >= 4) {

@@ -37,7 +37,7 @@ export default async function PlayersPage({
   };
 
   return (
-    <div className="max-w-lg mx-auto pb-24" style={{ background: "#080d1a", minHeight: "100vh" }}>
+    <div className="max-w-lg mx-auto pb-24" style={{ background: "#0B0E14", minHeight: "100vh" }}>
       <div className="px-4 pt-6 pb-3">
         <h1 className="text-white font-black text-xl">IPL Players</h1>
         <p className="text-slate-500 text-sm mt-0.5">

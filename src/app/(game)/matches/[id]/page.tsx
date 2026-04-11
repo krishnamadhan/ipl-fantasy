@@ -77,7 +77,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
   const awayColor = teamColor(m.team_away);
 
   return (
-    <div className="max-w-lg mx-auto pb-24" style={{ background: "#080d1a", minHeight: "100vh" }}>
+    <div className="max-w-lg mx-auto pb-24" style={{ background: "#0B0E14", minHeight: "100vh" }}>
 
       {/* Match hero card */}
       <div className="mx-4 mt-6 rounded-3xl overflow-hidden border border-slate-700/60"

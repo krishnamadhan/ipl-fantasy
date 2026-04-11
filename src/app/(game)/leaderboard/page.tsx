@@ -62,7 +62,7 @@ export default async function SeasonLeaderboardPage() {
 
   if (statMap.size === 0) {
     return (
-      <div className="max-w-lg mx-auto pb-24" style={{ background: "#0a0f1e", minHeight: "100vh" }}>
+      <div className="max-w-lg mx-auto pb-24" style={{ background: "#0B0E14", minHeight: "100vh" }}>
         <div className="px-4 pt-6 pb-3">
           <h1 className="text-white font-black text-xl">Season Leaderboard</h1>
           <p className="text-slate-500 text-sm mt-0.5">IPL 2026</p>
@@ -98,7 +98,7 @@ export default async function SeasonLeaderboardPage() {
   const myStat = statMap.get(user.id);
 
   return (
-    <div className="max-w-lg mx-auto pb-24" style={{ background: "#0a0f1e", minHeight: "100vh" }}>
+    <div className="max-w-lg mx-auto pb-24" style={{ background: "#0B0E14", minHeight: "100vh" }}>
       {/* Header */}
       <div className="px-4 pt-6 pb-4">
         <h1 className="text-white font-black text-xl">Season Leaderboard</h1>

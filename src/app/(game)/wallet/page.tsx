@@ -27,7 +27,7 @@ export default async function WalletPage() {
   const totalSpent  = transactions.filter((t) => t.type === "debit").reduce((s, t)  => s + t.amount, 0);
 
   return (
-    <div className="max-w-lg mx-auto pb-24" style={{ background: "#080d1a", minHeight: "100vh" }}>
+    <div className="max-w-lg mx-auto pb-24" style={{ background: "#0B0E14", minHeight: "100vh" }}>
       {/* Header */}
       <div className="px-4 pt-6 pb-4">
         <p className="text-slate-500 text-xs font-black uppercase tracking-widest">IPL Fantasy 2026</p>

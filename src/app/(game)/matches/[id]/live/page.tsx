@@ -116,7 +116,7 @@ export default async function LiveMatchPage({
   return (
     <div
       className="max-w-lg mx-auto pb-32"
-      style={{ background: "#080d1a", minHeight: "100vh" }}
+      style={{ background: "#0B0E14", minHeight: "100vh" }}
     >
       {/* ── Top bar ── */}
       <div
