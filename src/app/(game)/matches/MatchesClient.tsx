@@ -141,186 +141,140 @@ export default function MatchesClient({
           const isLocked = m.status === "locked";
           const hc = TEAM_COLORS[shortTeam(m.team_home)] ?? "#475569";
           const ac = TEAM_COLORS[shortTeam(m.team_away)] ?? "#475569";
+          const ls = (m as any).live_score_summary as any;
 
+          // Results tab — compact row
           if (tab === "results") {
             return (
               <Link key={m.id} href={`/matches/${m.id}`}>
                 <div
-                  className="flex items-center justify-between rounded-2xl px-4 py-3 card-press"
+                  className="flex items-center justify-between rounded-xl px-4 py-3 card-press"
                   style={{ background: "#141920", border: "1px solid #252D3D" }}
                 >
                   <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px]"
+                      style={{ background: "#1C2333" }}>🏏</div>
                     <span className="text-white font-rajdhani font-bold text-sm">{shortTeam(m.team_home)}</span>
-                    <span className="text-[#4A5568] text-xs">vs</span>
+                    <span className="text-[#4A5568] text-[10px] font-bold">VS</span>
                     <span className="text-white font-rajdhani font-bold text-sm">{shortTeam(m.team_away)}</span>
                   </div>
-                  {m.result_summary && (
-                    <p className="text-[#8A95A8] text-xs text-right max-w-[150px] truncate">{m.result_summary}</p>
-                  )}
+                  <p className="text-[#8A95A8] text-xs text-right max-w-[140px] truncate">
+                    {m.result_summary || "Completed"}
+                  </p>
                 </div>
               </Link>
             );
           }
 
+          // Badge strip helpers
+          const badges: { label: string; color: string; bg: string }[] = [];
+          if (isLive)   badges.push({ label: "● LIVE",         color: "#FF3B3B", bg: "rgba(255,59,59,0.15)" });
+          if (isOpen)   badges.push({ label: "⚡ Deadline",     color: "#F7A325", bg: "rgba(247,163,37,0.12)" });
+          if (isLocked) badges.push({ label: "🔒 Locked",       color: "#4A5568", bg: "rgba(74,85,104,0.15)" });
+          if (contests?.count) badges.push({ label: `${contests.count} Contests`, color: "#8A95A8", bg: "rgba(255,255,255,0.05)" });
+
+          const ctaLabel = isOpen ? "Join →" : isLive ? "Live →" : isLocked ? "Locked" : "View →";
+          const ctaStyle = (isOpen || isLive)
+            ? { background: "#3FEFB4", color: "#0B0E14" }
+            : isLocked
+            ? { background: "transparent", color: "#4A5568", border: "1px solid #252D3D" }
+            : { background: "transparent", color: "#8A95A8", border: "1px solid #252D3D" };
+
           return (
-            <Link key={m.id} href={`/matches/${m.id}`} className="block group">
+            <Link key={m.id} href={`/matches/${m.id}`} className="block">
               <div
-                className="relative rounded-2xl overflow-hidden card-press"
+                className="rounded-xl overflow-hidden card-press"
                 style={{
-                  background: isLive
-                    ? "linear-gradient(135deg, #1a0808 0%, #141920 100%)"
-                    : isOpen
-                    ? "linear-gradient(135deg, #151008 0%, #141920 100%)"
-                    : "#141920",
-                  border: `1px solid ${
-                    isLive ? "rgba(255,59,59,0.30)" : isOpen ? "rgba(247,163,37,0.25)" : "#252D3D"
-                  }`,
+                  background: isLive ? "linear-gradient(135deg, #160808 0%, #141920 100%)" : "#141920",
+                  border: `1px solid ${isLive ? "rgba(255,59,59,0.25)" : isOpen ? "rgba(247,163,37,0.20)" : "#252D3D"}`,
                 }}
               >
-                {/* Status accent bar */}
-                <div
-                  className="h-[2px] w-full"
-                  style={{
-                    background: isLive
-                      ? "#FF3B3B"
-                      : isOpen
-                      ? "linear-gradient(90deg, #F7A325, #E8950F)"
-                      : `linear-gradient(90deg, ${hc}60, ${ac}60)`,
-                  }}
-                />
+                {/* Thin accent top bar */}
+                <div className="h-[2px]" style={{
+                  background: isLive ? "#FF3B3B" : isOpen
+                    ? "linear-gradient(90deg,#F7A325,#E8950F)"
+                    : `linear-gradient(90deg,${hc}55,${ac}55)`,
+                }} />
 
-                <div className="p-4">
-                  {/* Status row */}
-                  <div className="flex items-center justify-between mb-3">
-                    <span
-                      className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
-                      style={{
-                        color:      isLive ? "#FF3B3B" : isOpen ? "#F7A325" : "#8A95A8",
-                        background: isLive ? "rgba(255,59,59,0.12)" : isOpen ? "rgba(247,163,37,0.10)" : "rgba(255,255,255,0.05)",
-                        border:     `1px solid ${isLive ? "rgba(255,59,59,0.25)" : isOpen ? "rgba(247,163,37,0.25)" : "#252D3D"}`,
-                      }}
-                    >
-                      {isLive && <span className="live-dot" style={{ width: 5, height: 5 }} />}
-                      {m.status?.replace("_", " ").toUpperCase()}
-                    </span>
-                    {m.city && <span className="text-[#4A5568] text-xs">{m.city}</span>}
+                <div className="flex items-center gap-3 px-3 py-3">
+                  {/* LEFT — sport icon + series */}
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-sm"
+                      style={{ background: "#1C2333", border: "1px solid #252D3D" }}>
+                      🏏
+                    </div>
+                    <span className="text-[9px] leading-tight text-center" style={{ color: "#4A5568", maxWidth: 28 }}>IPL</span>
                   </div>
 
-                  {/* Teams row */}
-                  <div className="flex items-center justify-between mb-3">
-                    {/* Home */}
-                    <div className="text-center flex-1">
-                      <div
-                        className="w-14 h-14 rounded-full border-2 flex items-center justify-center mx-auto mb-1.5 font-rajdhani font-bold text-sm"
-                        style={{
-                          borderColor: hc,
-                          background:  `linear-gradient(135deg, ${hc}30, ${hc}12)`,
-                          color:        hc,
-                          boxShadow:   `0 4px 12px ${hc}20`,
-                        }}
-                      >
-                        {shortTeam(m.team_home)}
+                  {/* CENTER — teams + status + badges */}
+                  <div className="flex-1 min-w-0">
+                    {/* Teams line */}
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-5 h-5 rounded-full border flex items-center justify-center font-rajdhani font-bold text-[8px] shrink-0"
+                        style={{ borderColor: hc, background: hc + "20", color: hc }}>
+                        {shortTeam(m.team_home).slice(0,3)}
                       </div>
-                      <p className="text-white text-xs font-semibold truncate max-w-[80px] mx-auto">
-                        {m.team_home}
+                      <p className="font-rajdhani font-bold text-sm text-white leading-none">
+                        {shortTeam(m.team_home)}
+                        <span className="font-normal text-[10px] mx-1.5" style={{ color: "#4A5568" }}>vs</span>
+                        {shortTeam(m.team_away)}
                       </p>
+                      <div className="w-5 h-5 rounded-full border flex items-center justify-center font-rajdhani font-bold text-[8px] shrink-0"
+                        style={{ borderColor: ac, background: ac + "20", color: ac }}>
+                        {shortTeam(m.team_away).slice(0,3)}
+                      </div>
                     </div>
 
-                    {/* Center */}
-                    <div className="px-3 text-center shrink-0 min-w-[80px]">
-                      {isLive ? (
-                        (() => {
-                          const ls = (m as any).live_score_summary as any;
-                          return (
-                            <div>
-                              <p className="text-[#FF3B3B] font-bold text-[10px] mb-1 flex items-center justify-center gap-1">
-                                <span className="live-dot" style={{ width: 5, height: 5 }} /> LIVE
-                              </p>
-                              {ls ? (
-                                <div className="text-[10px] space-y-0.5 text-center">
-                                  <p className="text-white font-bold">{ls.team1_runs}/{ls.team1_wickets}</p>
-                                  <p className="text-[#4A5568]">({ls.team1_overs} ov)</p>
-                                  {ls.team2_runs > 0 && (
-                                    <>
-                                      <p className="text-[#8A95A8]">{ls.team2_runs}/{ls.team2_wickets}</p>
-                                      <p className="text-[#4A5568]">({ls.team2_overs} ov)</p>
-                                    </>
-                                  )}
-                                </div>
-                              ) : (
-                                <p className="text-[#4A5568] text-[10px]">Syncing…</p>
-                              )}
-                            </div>
-                          );
-                        })()
+                    {/* Countdown or live score */}
+                    <div className="mb-2">
+                      {isLive && ls ? (
+                        <p className="text-[11px] font-semibold" style={{ color: "#3FEFB4" }}>
+                          {ls.team1_overs} Ov · {ls.team1_runs}/{ls.team1_wickets}
+                          {ls.team2_runs > 0 ? ` | ${ls.team2_runs}/${ls.team2_wickets}` : ""}
+                        </p>
+                      ) : isLive ? (
+                        <p className="text-[11px]" style={{ color: "#FF3B3B" }}>In Progress…</p>
                       ) : (
-                        <>
-                          <p className="text-[#252D3D] text-[10px] font-bold mb-0.5">VS</p>
-                          {m.status !== "completed" && (
-                            <CountdownTimer targetDate={m.scheduled_at} compact />
-                          )}
-                          {m.scheduled_at && m.status !== "completed" && (
-                            <p className="text-[#4A5568] text-[9px] mt-0.5">{formatTimeIST(m.scheduled_at)}</p>
-                          )}
-                        </>
+                        <div className="flex items-center gap-1.5">
+                          <CountdownTimer targetDate={m.scheduled_at} compact />
+                          {m.city && <span className="text-[10px]" style={{ color: "#4A5568" }}>· {m.city}</span>}
+                        </div>
                       )}
                     </div>
 
-                    {/* Away */}
-                    <div className="text-center flex-1">
-                      <div
-                        className="w-14 h-14 rounded-full border-2 flex items-center justify-center mx-auto mb-1.5 font-rajdhani font-bold text-sm"
-                        style={{
-                          borderColor: ac,
-                          background:  `linear-gradient(135deg, ${ac}30, ${ac}12)`,
-                          color:        ac,
-                          boxShadow:   `0 4px 12px ${ac}20`,
-                        }}
-                      >
-                        {shortTeam(m.team_away)}
-                      </div>
-                      <p className="text-white text-xs font-semibold truncate max-w-[80px] mx-auto">
-                        {m.team_away}
-                      </p>
+                    {/* Badge strip */}
+                    <div className="flex flex-wrap gap-1">
+                      {badges.map((b) => (
+                        <span
+                          key={b.label}
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                          style={{ color: b.color, background: b.bg }}
+                        >
+                          {b.label}
+                        </span>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Footer: contests + CTA */}
-                  {contests && contests.count > 0 ? (
-                    <div
-                      className="flex items-center justify-between pt-3"
-                      style={{ borderTop: "1px solid #252D3D" }}
+                  {/* RIGHT — CTA + contest count */}
+                  <div className="flex flex-col items-center gap-1.5 shrink-0">
+                    <button
+                      className="font-rajdhani font-bold text-xs px-3 py-1.5 rounded-lg"
+                      style={ctaStyle}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[#8A95A8] text-xs">
-                          {contests.count} contest{contests.count !== 1 ? "s" : ""}
-                        </span>
-                        <span className="text-[#252D3D]">·</span>
-                        <span className="text-xs font-bold" style={{ color: "#F7A325" }}>
-                          {formatPrize(contests.totalPrize)} prize
-                        </span>
-                      </div>
-                      <span
-                        className="text-xs font-rajdhani font-bold px-3 py-1.5 rounded-full"
-                        style={
-                          isOpen || isLive
-                            ? { background: "#3FEFB4", color: "#0B0E14" }
-                            : isLocked
-                            ? { background: "rgba(74,85,104,0.20)", color: "#4A5568", border: "1px solid #252D3D" }
-                            : { background: "rgba(255,255,255,0.06)", color: "#8A95A8" }
-                        }
-                      >
-                        {isOpen ? "Join →" : isLocked ? "Locked 🔒" : isLive ? "Live →" : "View →"}
-                      </span>
-                    </div>
-                  ) : (
-                    <div
-                      className="pt-3 text-center"
-                      style={{ borderTop: "1px solid #252D3D" }}
-                    >
-                      <p className="text-[#4A5568] text-xs">No contests open</p>
-                    </div>
-                  )}
+                      {ctaLabel}
+                    </button>
+                    {contests?.count > 0 && (
+                      <p className="text-[9px]" style={{ color: "#8A95A8" }}>
+                        {contests.count} contest{contests.count !== 1 ? "s" : ""}
+                      </p>
+                    )}
+                    {contests?.totalPrize > 0 && (
+                      <p className="text-[9px] font-bold" style={{ color: "#F7A325" }}>
+                        {formatPrize(contests.totalPrize)}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </Link>
