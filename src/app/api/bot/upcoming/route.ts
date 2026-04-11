@@ -13,13 +13,15 @@ export async function GET(req: NextRequest) {
   const admin = await createServiceClient();
   const now = new Date().toISOString();
   const in48h = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+  // Also include matches that started within the last 4h — covers bot restarts mid-match
+  const minus4h = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
 
   const { data: matches, error } = await admin
     .from("f11_matches")
     .select("id, team_home, team_away, scheduled_at, status, venue, cricapi_match_id")
     .in("status", ["scheduled", "open", "locked", "live"])
     .lte("scheduled_at", in48h)
-    .gte("scheduled_at", now)
+    .gte("scheduled_at", minus4h)
     .order("scheduled_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -8,9 +8,9 @@ import { createClient } from "@/lib/supabase/client";
 type Tab = "leaderboard" | "myteam" | "prizes";
 
 function formatPrize(amount: number): string {
-  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M pts`;
-  if (amount >= 1_000)     return `${(amount / 1_000).toFixed(0)}K pts`;
-  if (amount > 0)          return `${amount} pts`;
+  if (amount >= 1_000_000) return `₹${(amount / 1_000_000).toFixed(1)}M`;
+  if (amount >= 1_000)     return `₹${(amount / 1_000).toFixed(0)}K`;
+  if (amount > 0)          return `₹${amount}`;
   return "—";
 }
 
@@ -31,11 +31,11 @@ export default function ContestDetailClient({
   const [tab, setTab] = useState<Tab>("leaderboard");
   const [entries, setEntries] = useState(initialEntries);
   const channelRef = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null);
-  const isLive = matchStatus === "live";
+  const isLive      = matchStatus === "live";
   const isCompleted = matchStatus === "completed";
-  const isInReview = matchStatus === "in_review";
-  const isLocked = matchStatus === "locked";
-  const showTeams = isLocked || isLive || isCompleted || isInReview;
+  const isInReview  = matchStatus === "in_review";
+  const isLocked    = matchStatus === "locked";
+  const showTeams   = isLocked || isLive || isCompleted || isInReview;
 
   const refreshLeaderboard = useCallback(async () => {
     try {
@@ -67,71 +67,67 @@ export default function ContestDetailClient({
     return () => clearInterval(id);
   }, [isLive, refreshLeaderboard]);
 
-  const myEntry = myEntries[0];
+  const myEntry  = myEntries[0];
   const tiers: any[] = contest.prize_tiers ?? [];
-  const fillPct = contest.max_teams > 0
-    ? Math.min(100, (entries.length / contest.max_teams) * 100)
-    : 0;
-
+  const fillPct  = contest.max_teams > 0
+    ? Math.min(100, (entries.length / contest.max_teams) * 100) : 0;
   const matchTeamHome = contest.match?.team_home ?? "";
   const matchTeamAway = contest.match?.team_away ?? "";
 
   return (
-    <div className="max-w-lg mx-auto flex flex-col min-h-screen" style={{ background: "#080d1a" }}>
+    <div className="max-w-lg mx-auto flex flex-col min-h-screen" style={{ background: "#0B0E14" }}>
 
       {/* ── Header ── */}
-      <div
-        className="border-b flex-shrink-0"
-        style={{
-          background: "linear-gradient(180deg, #0f1e35 0%, #0a1520 100%)",
-          borderColor: "rgba(255,255,255,0.06)",
-        }}
-      >
+      <div className="flex-shrink-0" style={{ background: "#141920", borderBottom: "1px solid #252D3D" }}>
+
         {/* Nav row */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-3">
           <button
             onClick={() => router.back()}
-            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 border border-white/10"
-            style={{ background: "rgba(255,255,255,0.05)" }}
+            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: "#1C2333", border: "1px solid #252D3D" }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A95A8" strokeWidth="2.5">
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
           </button>
 
           <div className="flex-1 min-w-0">
-            <p className="text-white font-black text-base leading-tight truncate">{contest.name}</p>
+            <p className="text-white font-rajdhani font-bold text-base leading-tight truncate">{contest.name}</p>
             {matchTeamHome && (
-              <p className="text-slate-500 text-xs">
+              <p className="text-xs mt-0.5" style={{ color: "#4A5568" }}>
                 {shortTeam(matchTeamHome)} vs {shortTeam(matchTeamAway)}
               </p>
             )}
           </div>
 
+          {/* Status badge */}
           <span
-            className={cn(
-              "text-[10px] font-black uppercase px-3 py-1 rounded-full border shrink-0",
+            className="text-[10px] font-black uppercase px-3 py-1 rounded-full shrink-0"
+            style={
               isLive
-                ? "bg-red-500/15 border-red-500/30 text-red-400"
+                ? { color: "#FF3B3B", background: "rgba(255,59,59,0.12)", border: "1px solid rgba(255,59,59,0.30)" }
                 : isCompleted
-                ? "bg-green-500/15 border-green-500/30 text-green-400"
-                : "bg-brand/15 border-brand/30 text-brand"
-            )}
+                ? { color: "#21C55D", background: "rgba(33,197,93,0.12)", border: "1px solid rgba(33,197,93,0.30)" }
+                : { color: "#3FEFB4", background: "rgba(63,239,180,0.10)", border: "1px solid rgba(63,239,180,0.25)" }
+            }
           >
-            {isLive && (
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-400 mr-1.5 animate-pulse align-middle" />
-            )}
-            {isLive ? "LIVE" : isCompleted ? "DONE" : contest.status?.toUpperCase()}
+            {isLive && <span className="live-dot mr-1.5" style={{ width: 5, height: 5 }} />}
+            {isLive ? "LIVE" : isCompleted ? "DONE" : (contest.status ?? "").toUpperCase()}
           </span>
         </div>
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-2 px-4 pb-3">
-          <StatBox label="Prize Pool" value={formatPrize(
-            contest.prize_pool > 0
-              ? contest.prize_pool
-              : Math.floor(entries.length * contest.entry_fee * 0.9)
-          )} accent />
+          <StatBox
+            label="Prize Pool"
+            value={formatPrize(
+              contest.prize_pool > 0
+                ? contest.prize_pool
+                : Math.floor(entries.length * contest.entry_fee * 0.9)
+            )}
+            valueColor="#F7A325"
+          />
           <StatBox label="Entry Fee" value={contest.entry_fee === 0 ? "FREE" : formatCurrency(contest.entry_fee)} />
           <StatBox label="Teams" value={`${entries.length}/${contest.max_teams}`} />
         </div>
@@ -141,7 +137,10 @@ export default function ContestDetailClient({
           <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
             <div
               className="h-full rounded-full transition-all"
-              style={{ width: `${fillPct}%`, background: "linear-gradient(90deg, #F5A623, #E8950F)" }}
+              style={{
+                width: `${fillPct}%`,
+                background: fillPct >= 90 ? "#FF3B3B" : fillPct > 70 ? "#F7A325" : "#3FEFB4",
+              }}
             />
           </div>
         </div>
@@ -149,44 +148,55 @@ export default function ContestDetailClient({
         {/* My rank highlight */}
         {myEntry?.rank && (
           <div
-            className="mx-4 mb-3 rounded-2xl px-4 py-3 border border-brand/25 flex items-center justify-between"
-            style={{ background: "rgba(245,166,35,0.07)" }}
+            className="mx-4 mb-3 rounded-2xl px-4 py-3 flex items-center justify-between"
+            style={{ background: "rgba(63,239,180,0.08)", border: "1px solid rgba(63,239,180,0.20)" }}
           >
             <div>
-              <p className="text-brand text-[10px] font-black uppercase tracking-wider">Your Rank</p>
-              <p className="text-white font-black text-3xl leading-none">#{myEntry.rank}</p>
+              <p className="text-[10px] font-black uppercase tracking-wider mb-0.5" style={{ color: "#3FEFB4" }}>
+                Your Rank
+              </p>
+              <p className="font-rajdhani font-bold text-3xl leading-none text-white">#{myEntry.rank}</p>
             </div>
             <div className="text-center">
-              <p className="text-slate-500 text-[10px] uppercase font-bold">Points</p>
-              <p className="text-white font-black text-xl">{myEntry.total_points ?? 0}</p>
+              <p className="text-[10px] uppercase font-bold mb-0.5" style={{ color: "#4A5568" }}>Points</p>
+              <p className="font-rajdhani font-bold text-xl text-white">{myEntry.total_points ?? 0}</p>
             </div>
             {myEntry.prize_won > 0 && (
               <div className="text-right">
-                <p className="text-slate-500 text-[10px] uppercase font-bold">Won</p>
-                <p className="text-green-400 font-black text-xl">{formatCurrency(myEntry.prize_won)}</p>
+                <p className="text-[10px] uppercase font-bold mb-0.5" style={{ color: "#4A5568" }}>Won</p>
+                <p className="font-rajdhani font-bold text-xl" style={{ color: "#21C55D" }}>
+                  {formatCurrency(myEntry.prize_won)}
+                </p>
               </div>
             )}
           </div>
         )}
 
         {/* Tab bar */}
-        <div className="flex border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-          {(["leaderboard", "myteam", "prizes"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={cn(
-                "flex-1 py-3 text-xs font-black uppercase tracking-wider transition-all border-b-2",
-                tab === t ? "text-brand border-brand" : "text-slate-600 border-transparent hover:text-slate-400"
-              )}
-            >
-              {t === "leaderboard" ? "Leaderboard" : t === "myteam" ? "My Team" : "Prizes"}
-            </button>
-          ))}
+        <div className="flex" style={{ borderTop: "1px solid #252D3D" }}>
+          {(["leaderboard", "myteam", "prizes"] as Tab[]).map((t) => {
+            const active = tab === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className="relative flex-1 py-3 text-xs font-black uppercase tracking-wider transition-colors"
+                style={{ color: active ? "#3FEFB4" : "#4A5568" }}
+              >
+                {t === "leaderboard" ? "Leaderboard" : t === "myteam" ? "My Team" : "Prizes"}
+                {active && (
+                  <span
+                    className="absolute bottom-0 left-0 right-0"
+                    style={{ height: 2, background: "#3FEFB4", borderRadius: "2px 2px 0 0" }}
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* ── Content ── */}
+      {/* ── Tab content ── */}
       <div className="flex-1 overflow-y-auto">
         {tab === "leaderboard" && (
           <LeaderboardTab
@@ -223,16 +233,18 @@ export default function ContestDetailClient({
   );
 }
 
-function StatBox({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function StatBox({
+  label, value, valueColor,
+}: { label: string; value: string; valueColor?: string }) {
   return (
     <div
-      className="rounded-2xl px-3 py-2.5 text-center border"
-      style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.06)" }}
+      className="rounded-xl px-3 py-2.5 text-center"
+      style={{ background: "#1C2333", border: "1px solid #252D3D" }}
     >
-      <p className={cn("font-black text-base leading-tight", accent ? "text-brand" : "text-white")}>
+      <p className="font-rajdhani font-bold text-base leading-tight" style={{ color: valueColor ?? "#F0F4FF" }}>
         {value}
       </p>
-      <p className="text-slate-600 text-[9px] uppercase font-bold mt-0.5">{label}</p>
+      <p className="text-[9px] uppercase font-bold mt-0.5" style={{ color: "#4A5568" }}>{label}</p>
     </div>
   );
 }
@@ -251,13 +263,13 @@ function LeaderboardTab({
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4">
         <div
-          className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl mb-4 border border-white/10"
-          style={{ background: "rgba(255,255,255,0.04)" }}
+          className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl mb-4"
+          style={{ background: "#141920", border: "1px solid #252D3D" }}
         >
           🔒
         </div>
-        <p className="text-white font-black text-lg mb-1">Teams Locked</p>
-        <p className="text-slate-500 text-sm text-center leading-relaxed">
+        <p className="text-white font-rajdhani font-bold text-lg mb-1">Teams Locked</p>
+        <p className="text-sm text-center leading-relaxed" style={{ color: "#8A95A8" }}>
           Teams are revealed once the match goes live.
           <br />No peeking! 😄
         </p>
@@ -266,93 +278,112 @@ function LeaderboardTab({
   }
 
   if (entries.length === 0) {
-    return <p className="text-center text-slate-500 py-12 text-sm">No entries yet</p>;
+    return <p className="text-center py-12 text-sm" style={{ color: "#4A5568" }}>No entries yet</p>;
   }
 
   const myIndex = entries.findIndex((e) => e.user_id === currentUserId);
-  const myRank = myIndex >= 0 ? (entries[myIndex].rank ?? myIndex + 1) : null;
+  const myRank  = myIndex >= 0 ? (entries[myIndex].rank ?? myIndex + 1) : null;
   const spotsFromWinning = myRank !== null && myRank > winnersCount ? myRank - winnersCount : 0;
 
   return (
     <div>
+      {/* Live indicator */}
       {isLive && (
         <div
-          className="flex items-center justify-center gap-2 py-2.5 border-b"
-          style={{ background: "rgba(239,68,68,0.05)", borderColor: "rgba(239,68,68,0.15)" }}
+          className="flex items-center justify-center gap-2 py-2.5"
+          style={{ background: "rgba(255,59,59,0.06)", borderBottom: "1px solid rgba(255,59,59,0.15)" }}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-          <p className="text-red-400 text-xs font-bold">Live · Auto-updating</p>
+          <span className="live-dot" style={{ width: 6, height: 6 }} />
+          <p className="text-xs font-bold" style={{ color: "#FF3B3B" }}>Live · Auto-updating</p>
         </div>
       )}
 
-      {/* My position summary strip */}
+      {/* My position strip */}
       {myRank !== null && (
         <div
-          className="flex items-center justify-between px-4 py-2.5 border-b"
+          className="flex items-center justify-between px-4 py-2.5"
           style={{
-            background: myRank <= winnersCount ? "rgba(34,197,94,0.06)" : "rgba(255,255,255,0.02)",
-            borderColor: myRank <= winnersCount ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)",
+            background:   myRank <= winnersCount ? "rgba(33,197,93,0.06)" : "rgba(255,255,255,0.02)",
+            borderBottom: `1px solid ${myRank <= winnersCount ? "rgba(33,197,93,0.15)" : "#252D3D"}`,
           }}
         >
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-wide"
-              style={{ color: myRank <= winnersCount ? "#22C55E" : "#94A3B8" }}>
+              style={{ color: myRank <= winnersCount ? "#21C55D" : "#8A95A8" }}>
               Your Rank
             </span>
-            <span className="font-black text-white text-sm">#{myRank}</span>
+            <span className="font-rajdhani font-bold text-sm text-white">#{myRank}</span>
           </div>
           {spotsFromWinning > 0 ? (
-            <span className="text-slate-500 text-[10px]">
+            <span className="text-[10px]" style={{ color: "#4A5568" }}>
               {spotsFromWinning} spot{spotsFromWinning !== 1 ? "s" : ""} from winning
             </span>
           ) : (
-            <span className="text-green-400 text-[10px] font-bold">In the money 🏆</span>
+            <span className="text-[10px] font-bold" style={{ color: "#21C55D" }}>In the money 🏆</span>
           )}
         </div>
       )}
 
       {/* Column headers */}
       <div
-        className="grid grid-cols-[40px_1fr_56px_68px] gap-2 px-4 py-2.5 border-b"
-        style={{ borderColor: "rgba(255,255,255,0.06)" }}
+        className="grid gap-2 px-4 py-2"
+        style={{
+          gridTemplateColumns: showTeams ? "40px 1fr 56px 68px 28px" : "40px 1fr 56px 68px",
+          borderBottom: "1px solid #252D3D",
+        }}
       >
-        <span className="text-[9px] text-slate-600 font-black uppercase">#</span>
-        <span className="text-[9px] text-slate-600 font-black uppercase">Team</span>
-        <span className="text-[9px] text-slate-600 font-black uppercase text-right">Pts</span>
-        <span className="text-[9px] text-slate-600 font-black uppercase text-right">Prize</span>
+        {["#", "Team", "Pts", "Prize"].map((h, i) => (
+          <span
+            key={h}
+            className={cn("text-[9px] font-black uppercase tracking-wider", i >= 2 ? "text-right" : "")}
+            style={{ color: "#4A5568" }}
+          >
+            {h}
+          </span>
+        ))}
+        {showTeams && <div />}
       </div>
 
       {entries.map((e, i) => {
-        const isMe = e.user_id === currentUserId;
-        const rank = e.rank ?? i + 1;
+        const isMe  = e.user_id === currentUserId;
+        const rank  = e.rank ?? i + 1;
         const captainName = e.captain?.name ?? null;
-        // Insert winner zone divider AFTER the last winning rank
-        const showWinnerDivider = winnersCount > 0 && rank === winnersCount + 1;
+        const showCutoff  = winnersCount > 0 && rank === winnersCount + 1;
+
+        // Compare link: when teams are visible and 2+ entries exist
+        // Self row → compare vs rank-1 (or rank-2 if you ARE rank-1)
+        // Other row → compare current user vs that user
+        const rank1Id = entries[0]?.user_id ?? "";
+        const diffOpponent = isMe
+          ? (rank1Id !== currentUserId ? rank1Id : entries[1]?.user_id ?? "")
+          : e.user_id;
+        const diffHref = showTeams && entries.length > 1 && diffOpponent
+          ? `/contests/${contestId}/diff?u1=${currentUserId}&u2=${diffOpponent}`
+          : null;
 
         return (
           <div key={e.id}>
-            {/* Winner zone boundary — Dream11's green cutoff line */}
-            {showWinnerDivider && (
+            {/* Prize cutoff line */}
+            {showCutoff && (
               <div
-                className="flex items-center gap-3 px-4 py-2 border-y"
-                style={{ background: "rgba(239,68,68,0.05)", borderColor: "rgba(239,68,68,0.15)" }}
+                className="flex items-center gap-3 px-4 py-2"
+                style={{ background: "rgba(255,59,59,0.04)", borderTop: "1px solid rgba(255,59,59,0.15)", borderBottom: "1px solid rgba(255,59,59,0.15)" }}
               >
-                <div className="flex-1 h-px" style={{ background: "rgba(239,68,68,0.25)" }} />
-                <span className="text-red-400 text-[9px] font-black uppercase tracking-widest shrink-0">
+                <div className="flex-1 h-px" style={{ background: "rgba(255,59,59,0.25)" }} />
+                <span className="text-[9px] font-black uppercase tracking-widest shrink-0" style={{ color: "#FF3B3B" }}>
                   Prize cutoff
                 </span>
-                <div className="flex-1 h-px" style={{ background: "rgba(239,68,68,0.25)" }} />
+                <div className="flex-1 h-px" style={{ background: "rgba(255,59,59,0.25)" }} />
               </div>
             )}
 
             <div
-              className={cn(
-                "grid grid-cols-[40px_1fr_56px_68px] gap-2 items-center px-4 py-3.5 border-b transition",
-                isMe ? "border-brand/15" : ""
-              )}
+              className="grid gap-2 items-center px-4 py-3.5"
               style={{
-                background: isMe ? "rgba(245,166,35,0.05)" : rank <= winnersCount ? "rgba(34,197,94,0.02)" : "transparent",
-                borderColor: isMe ? undefined : "rgba(255,255,255,0.04)",
+                gridTemplateColumns: showTeams ? "40px 1fr 56px 68px 28px" : "40px 1fr 56px 68px",
+                background:   isMe ? "rgba(63,239,180,0.06)" : rank <= winnersCount ? "rgba(33,197,93,0.02)" : "transparent",
+                borderBottom: "1px solid #252D3D",
+                borderLeft:   isMe ? "3px solid #3FEFB4" : "3px solid transparent",
               }}
             >
               {/* Rank */}
@@ -361,7 +392,10 @@ function LeaderboardTab({
                  : rank === 2 ? <span className="text-xl">🥈</span>
                  : rank === 3 ? <span className="text-xl">🥉</span>
                  : (
-                  <span className={cn("font-black text-sm", isMe ? "text-brand" : rank <= winnersCount ? "text-green-400" : "text-slate-500")}>
+                  <span
+                    className="font-rajdhani font-bold text-sm"
+                    style={{ color: isMe ? "#3FEFB4" : rank <= winnersCount ? "#21C55D" : "#4A5568" }}
+                  >
                     {rank}
                   </span>
                 )}
@@ -370,33 +404,59 @@ function LeaderboardTab({
               {/* Team */}
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className={cn("text-sm font-bold truncate", isMe ? "text-brand" : "text-white")}>
+                  <p
+                    className="text-sm font-bold truncate"
+                    style={{ color: isMe ? "#3FEFB4" : "#F0F4FF" }}
+                  >
                     {e.team_name ?? "Team"}
                   </p>
                   {isMe && (
-                    <span className="text-[8px] font-black text-brand/70 bg-brand/10 px-1.5 py-0.5 rounded shrink-0">
+                    <span
+                      className="text-[8px] font-black px-1.5 py-0.5 rounded shrink-0"
+                      style={{ color: "#3FEFB4", background: "rgba(63,239,180,0.12)" }}
+                    >
                       YOU
                     </span>
                   )}
                 </div>
                 {captainName && (
-                  <p className="text-slate-500 text-xs truncate mt-0.5">
-                    C: <span className="text-slate-400">{captainName}</span>
+                  <p className="text-xs truncate mt-0.5" style={{ color: "#4A5568" }}>
+                    C: <span style={{ color: "#8A95A8" }}>{captainName}</span>
                   </p>
                 )}
               </div>
 
               {/* Points */}
-              <span className={cn("text-sm font-black text-right tabular-nums", isMe ? "text-brand" : "text-white")}>
+              <span
+                className="text-sm font-rajdhani font-bold text-right tabular-nums"
+                style={{ color: isMe ? "#3FEFB4" : "#F0F4FF" }}
+              >
                 {e.total_points ?? 0}
               </span>
 
               {/* Prize */}
-              <span className={cn("text-sm text-right font-bold tabular-nums",
-                e.prize_won > 0 ? "text-green-400" : "text-slate-700"
-              )}>
+              <span
+                className="text-sm font-bold text-right tabular-nums"
+                style={{ color: e.prize_won > 0 ? "#21C55D" : "#252D3D" }}
+              >
                 {e.prize_won > 0 ? formatPrize(e.prize_won) : "—"}
               </span>
+
+              {/* Compare button (only when teams are visible) */}
+              {showTeams && (
+                diffHref ? (
+                  <Link
+                    href={diffHref}
+                    className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors active:opacity-70"
+                    style={{ background: "rgba(63,239,180,0.08)" }}
+                    title="Compare teams"
+                  >
+                    <span className="text-[11px]" style={{ color: "#3FEFB4" }}>⇄</span>
+                  </Link>
+                ) : (
+                  <div />
+                )
+              )}
             </div>
           </div>
         );
@@ -417,21 +477,20 @@ function MyTeamTab({
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4">
         <div
-          className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl mb-4 border border-white/10"
-          style={{ background: "rgba(255,255,255,0.04)" }}
+          className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl mb-4"
+          style={{ background: "#141920", border: "1px solid #252D3D" }}
         >
           🏏
         </div>
-        <p className="text-white font-black text-lg mb-1">Not joined</p>
-        <p className="text-slate-500 text-sm text-center mb-6">You haven't entered this contest</p>
+        <p className="text-white font-rajdhani font-bold text-lg mb-1">Not joined</p>
+        <p className="text-sm text-center mb-6" style={{ color: "#8A95A8" }}>
+          You haven't entered this contest
+        </p>
         {matchId && (
           <Link
             href={`/contests/browse/${matchId}`}
-            className="text-white font-black px-6 py-3 rounded-2xl shadow-lg"
-            style={{
-              background: "linear-gradient(135deg, #F5A623, #E8950F)",
-              boxShadow: "0 4px 16px rgba(245,166,35,0.35)",
-            }}
+            className="font-rajdhani font-bold px-6 py-3 rounded-2xl"
+            style={{ background: "#3FEFB4", color: "#0B0E14" }}
           >
             Join Contest →
           </Link>
@@ -445,40 +504,43 @@ function MyTeamTab({
       {myEntries.map((e: any) => (
         <div
           key={e.id}
-          className="rounded-2xl border p-4"
-          style={{ background: "#111827", borderColor: "rgba(255,255,255,0.06)" }}
+          className="rounded-2xl p-4"
+          style={{ background: "#141920", border: "1px solid #252D3D" }}
         >
           <div className="flex items-center justify-between mb-3">
-            <p className="text-white font-black text-base">{e.team_name ?? "My Team"}</p>
+            <p className="text-white font-rajdhani font-bold text-base">{e.team_name ?? "My Team"}</p>
             {e.total_points > 0 && (
               <div className="text-right">
-                <p className="text-brand font-black text-xl">{e.total_points} pts</p>
-                {e.rank && <p className="text-slate-500 text-xs">Rank #{e.rank}</p>}
+                <p className="font-rajdhani font-bold text-xl" style={{ color: "#3FEFB4" }}>
+                  {e.total_points} pts
+                </p>
+                {e.rank && <p className="text-xs" style={{ color: "#4A5568" }}>Rank #{e.rank}</p>}
               </div>
             )}
           </div>
 
           {e.prize_won > 0 && (
             <div
-              className="rounded-xl px-3 py-2 mb-3 text-center border border-green-500/20"
-              style={{ background: "rgba(34,197,94,0.08)" }}
+              className="rounded-xl px-3 py-2 mb-3 text-center"
+              style={{ background: "rgba(33,197,93,0.08)", border: "1px solid rgba(33,197,93,0.20)" }}
             >
-              <p className="text-green-400 font-black">Won {formatCurrency(e.prize_won)} 🎉</p>
+              <p className="font-bold" style={{ color: "#21C55D" }}>Won {formatCurrency(e.prize_won)} 🎉</p>
             </div>
           )}
 
           <div className="flex gap-2">
             <Link
               href={`/contests/${contestId}/entry`}
-              className="flex-1 text-center py-2.5 rounded-xl border text-slate-300 text-sm font-bold hover:border-slate-500 transition"
-              style={{ borderColor: "rgba(255,255,255,0.10)" }}
+              className="flex-1 text-center py-2.5 rounded-xl text-sm font-bold transition-opacity hover:opacity-80"
+              style={{ background: "#1C2333", color: "#8A95A8", border: "1px solid #252D3D" }}
             >
               View Breakdown
             </Link>
             {!showTeams && (
               <Link
                 href={`/team-builder/${e.match_id}`}
-                className="flex-1 text-center py-2.5 rounded-xl border border-brand/30 text-brand text-sm font-bold hover:bg-brand/5 transition"
+                className="flex-1 text-center py-2.5 rounded-xl text-sm font-bold transition-opacity hover:opacity-80"
+                style={{ color: "#3FEFB4", border: "1px solid rgba(63,239,180,0.30)", background: "rgba(63,239,180,0.06)" }}
               >
                 Edit Team
               </Link>
@@ -502,16 +564,19 @@ function PrizesTab({
 
   return (
     <div className="p-4">
+      {/* Summary card */}
       <div
-        className="rounded-2xl p-4 mb-4 border border-brand/20"
-        style={{ background: "rgba(245,166,35,0.06)" }}
+        className="rounded-2xl p-4 mb-4"
+        style={{ background: "rgba(247,163,37,0.06)", border: "1px solid rgba(247,163,37,0.20)" }}
       >
         <div className="flex items-center justify-between mb-1">
-          <p className="text-slate-400 text-sm">Total Prize Pool</p>
-          <p className="text-brand font-black text-3xl leading-none">{formatPrize(prizePool)}</p>
+          <p className="text-sm" style={{ color: "#8A95A8" }}>Total Prize Pool</p>
+          <p className="font-rajdhani font-black text-3xl leading-none" style={{ color: "#F7A325" }}>
+            {formatPrize(prizePool)}
+          </p>
         </div>
         {winPct !== null && (
-          <p className="text-slate-500 text-xs">
+          <p className="text-xs" style={{ color: "#4A5568" }}>
             Top <span className="text-white font-bold">{winPct}%</span> win ·{" "}
             {winnersCount} winner{winnersCount !== 1 ? "s" : ""}
           </p>
@@ -519,12 +584,12 @@ function PrizesTab({
       </div>
 
       {tiers.length === 0 ? (
-        <p className="text-slate-500 text-sm text-center py-8">No prize breakdown available</p>
+        <p className="text-sm text-center py-8" style={{ color: "#4A5568" }}>No prize breakdown available</p>
       ) : (
-        <div>
+        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #252D3D" }}>
           <div
-            className="grid grid-cols-[1fr_80px] px-4 py-2 text-[9px] text-slate-600 font-black uppercase tracking-wider border-b"
-            style={{ borderColor: "rgba(255,255,255,0.06)" }}
+            className="grid grid-cols-[1fr_80px] px-4 py-2 text-[9px] font-black uppercase tracking-wider"
+            style={{ background: "#1C2333", borderBottom: "1px solid #252D3D", color: "#4A5568" }}
           >
             <span>Rank</span>
             <span className="text-right">Prize</span>
@@ -533,20 +598,23 @@ function PrizesTab({
           {tiers.map((t: any, i: number) => (
             <div
               key={i}
-              className="grid grid-cols-[1fr_80px] items-center px-4 py-3.5 border-b"
-              style={{ borderColor: "rgba(255,255,255,0.05)" }}
+              className="grid grid-cols-[1fr_80px] items-center px-4 py-3.5"
+              style={{
+                background:   i === 0 ? "rgba(33,197,93,0.04)" : "transparent",
+                borderBottom: i < tiers.length - 1 ? "1px solid #252D3D" : "none",
+              }}
             >
               <div>
                 <p className="text-white font-bold text-sm">{t.label}</p>
                 {t.maxRank > t.minRank && (
-                  <p className="text-slate-500 text-xs">
+                  <p className="text-xs mt-0.5" style={{ color: "#4A5568" }}>
                     #{t.minRank}–#{t.maxRank} · {t.maxRank - t.minRank + 1} winners
                   </p>
                 )}
               </div>
               <p
-                className="font-black text-base text-right"
-                style={{ color: i === 0 ? "#22C55E" : "#94A3B8" }}
+                className="font-rajdhani font-black text-base text-right"
+                style={{ color: i === 0 ? "#21C55D" : "#8A95A8" }}
               >
                 {formatPrize(t.prizeAmount)}
               </p>
@@ -555,7 +623,7 @@ function PrizesTab({
         </div>
       )}
 
-      <p className="text-slate-700 text-xs text-center mt-6">
+      <p className="text-xs text-center mt-6" style={{ color: "#252D3D" }}>
         10% platform fee applied · Prizes per winner in each tier
       </p>
     </div>

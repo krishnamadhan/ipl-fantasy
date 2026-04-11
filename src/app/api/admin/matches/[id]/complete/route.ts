@@ -43,7 +43,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     .eq("match_id", id)
     .eq("status", "completed");
 
-  const payoutResults: { contestId: string; ok: boolean; paid?: number; error?: string }[] = [];
+  const payoutResults: { contestId: string; ok: boolean; paid?: number; error?: string; creditErrors?: string[] }[] = [];
 
   for (const contest of contests ?? []) {
     // Skip if already paid (idempotency guard)
@@ -75,6 +75,42 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
         .order("total_points", { ascending: false });
 
       const finalEntries = rankedEntries ?? entries;
+
+      // Safety guard: if prize_pool is 0 but users paid entry fees, refund them.
+      // This handles bot-created contests that were misconfigured (entry_fee > 0, prize_pool = 0).
+      if (contest.prize_pool <= 0) {
+        const { data: paidEntries } = await service
+          .from("f11_entries")
+          .select("id, user_id, entry_fee_paid")
+          .eq("contest_id", contest.id)
+          .gt("entry_fee_paid", 0);
+
+        const refundErrors: string[] = [];
+        let totalRefunded = 0;
+
+        for (const pe of paidEntries ?? []) {
+          const { error: refErr } = await service.rpc("f11_credit_wallet", {
+            p_user_id: pe.user_id,
+            p_amount: pe.entry_fee_paid,
+            p_reason: `Refund: ${contest.name} (no prize pool configured)`,
+            p_reference_id: contest.id,
+          });
+          if (refErr) {
+            refundErrors.push(`user ${pe.user_id}: ${refErr.message}`);
+          } else {
+            totalRefunded += pe.entry_fee_paid;
+          }
+        }
+
+        if (refundErrors.length === 0) {
+          await service.from("f11_contests").update({ winner_paid_at: new Date().toISOString() }).eq("id", contest.id);
+          payoutResults.push({ contestId: contest.id, ok: true, paid: 0, creditErrors: totalRefunded > 0 ? [`Refunded ₹${totalRefunded} to ${paidEntries?.length} user(s)`] : [] });
+        } else {
+          payoutResults.push({ contestId: contest.id, ok: false, paid: 0, creditErrors: refundErrors });
+        }
+        continue;
+      }
+
       const tiers = calcPrizeTiers(contest.prize_pool, contest.prize_pool_type, finalEntries.length);
       let totalPaid = 0;
       const creditErrors: string[] = [];
