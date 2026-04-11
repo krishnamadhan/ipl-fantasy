@@ -36,8 +36,8 @@ export default async function DashboardPage() {
   const otherMatches = matches.filter((m) => m.id !== nextMatch?.id && m.status !== "live");
   const firstName    = (profile?.display_name ?? profile?.username ?? "Player").split(" ")[0];
 
-  // Extra data for hero card
-  const [heroContestsRes, heroTeamRes, myEntriesRes] = await Promise.all([
+  // Extra data for hero card + active entries + leaderboard preview
+  const [heroContestsRes, heroTeamRes, myEntriesRes, lbEntriesRes] = await Promise.all([
     nextMatch
       ? supabase.from("f11_contests").select("id, prize_pool").eq("match_id", nextMatch.id).in("status", ["open", "locked"])
       : Promise.resolve({ data: [] }),
@@ -51,6 +51,12 @@ export default async function DashboardPage() {
       .in("contest.status", ["open", "locked", "live"])
       .order("created_at", { ascending: false })
       .limit(5),
+    // Leaderboard: aggregate completed entries per user (lightweight)
+    (supabase as any)
+      .from("f11_entries")
+      .select("user_id, total_points, prize_won, contest:f11_contests!inner(status)")
+      .eq("contest.status", "completed")
+      .limit(500),
   ]);
 
   const heroContests     = (heroContestsRes as any).data ?? [];
@@ -59,6 +65,31 @@ export default async function DashboardPage() {
   const heroContestCount = heroContests.length;
   const heroTotalPrize   = heroContests.reduce((s: number, c: any) => s + (c.prize_pool ?? 0), 0);
   const hasTeam          = heroTeam.length > 0;
+
+  // Aggregate leaderboard in JS — top 5 + current user
+  const lbRows = (lbEntriesRes as any).data ?? [];
+  const lbMap  = new Map<string, { userId: string; totalPoints: number; totalWinnings: number }>();
+  for (const row of lbRows) {
+    const prev = lbMap.get(row.user_id) ?? { userId: row.user_id, totalPoints: 0, totalWinnings: 0 };
+    lbMap.set(row.user_id, {
+      ...prev,
+      totalPoints:    prev.totalPoints + (row.total_points ?? 0),
+      totalWinnings:  prev.totalWinnings + (row.prize_won ?? 0),
+    });
+  }
+  const lbSorted = Array.from(lbMap.values())
+    .sort((a, b) => b.totalPoints - a.totalPoints || b.totalWinnings - a.totalWinnings);
+  const top5    = lbSorted.slice(0, 5);
+  const myLbIdx = lbSorted.findIndex((r) => r.userId === user.id);
+  // If current user is outside top 5, append them
+  if (myLbIdx >= 5) top5.push(lbSorted[myLbIdx]);
+
+  // Fetch profile names for leaderboard users
+  const lbUserIds = [...new Set(top5.map((r) => r.userId))];
+  const { data: lbProfiles } = lbUserIds.length
+    ? await supabase.from("f11_profiles").select("id, username, display_name").in("id", lbUserIds)
+    : { data: [] };
+  const lbProfileMap = new Map((lbProfiles ?? []).map((p: any) => [p.id, p]));
 
   return (
     <div className="max-w-lg mx-auto pb-24" style={{ background: "#0B0E14", minHeight: "100vh" }}>
@@ -229,29 +260,114 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* ── Season Leaderboard CTA ── */}
-      <div className="px-4 mb-4">
-        <Link
-          href="/leaderboard"
-          className="flex items-center justify-between rounded-2xl px-4 py-4 card-press"
-          style={{
-            background: "rgba(63,239,180,0.04)",
-            border:     "1px solid rgba(63,239,180,0.15)",
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
-              style={{ background: "rgba(63,239,180,0.10)" }}>
-              <span className="text-xl">🏆</span>
-            </div>
+      {/* ── Season Leaderboard Preview ── */}
+      {top5.length > 0 && (
+        <div className="px-4 mb-4">
+          {/* Section header */}
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-white font-black text-sm">Season Leaderboard</p>
-              <p className="text-xs" style={{ color: "#8A95A8" }}>IPL 2026 standings</p>
+              <p className="text-white font-rajdhani font-bold text-base leading-none">Season Standings</p>
+              <p className="text-[10px] mt-0.5" style={{ color: "#8A95A8" }}>IPL 2026 leaderboard</p>
             </div>
+            <Link href="/leaderboard" className="text-xs font-bold" style={{ color: "#3FEFB4" }}>View all →</Link>
           </div>
-          <span className="text-xs font-bold" style={{ color: "#3FEFB4" }}>View →</span>
-        </Link>
-      </div>
+
+          {/* Leaderboard rows */}
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{ background: "#141920", border: "1px solid #252D3D" }}
+          >
+            {top5.map((row, idx) => {
+              const isMe    = row.userId === user.id;
+              const rank    = lbSorted.findIndex((r) => r.userId === row.userId) + 1;
+              const p       = lbProfileMap.get(row.userId) as any;
+              const name    = p?.display_name ?? p?.username ?? "Player";
+              const initial = name.charAt(0).toUpperCase();
+              const medalColor = rank === 1 ? "#F7A325" : rank === 2 ? "#94A3B8" : rank === 3 ? "#CD7C3A" : null;
+
+              return (
+                <div
+                  key={row.userId}
+                  className="flex items-center gap-3 px-4 py-3"
+                  style={{
+                    background:   isMe ? "#1C2333" : "transparent",
+                    borderLeft:   isMe ? "3px solid #3FEFB4" : "3px solid transparent",
+                    borderBottom: idx < top5.length - 1 ? "1px solid #252D3D" : "none",
+                  }}
+                >
+                  {/* Rank */}
+                  <div className="w-6 text-center shrink-0">
+                    {medalColor ? (
+                      <span className="font-rajdhani font-bold text-sm" style={{ color: medalColor }}>
+                        {rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉"}
+                      </span>
+                    ) : (
+                      <span className="font-rajdhani font-bold text-sm" style={{ color: "#4A5568" }}>
+                        {rank}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Avatar */}
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center font-rajdhani font-bold text-sm shrink-0"
+                    style={{
+                      background: isMe ? "rgba(63,239,180,0.15)" : "rgba(255,255,255,0.06)",
+                      color:      isMe ? "#3FEFB4" : "#F0F4FF",
+                      border:     isMe ? "1.5px solid #3FEFB4" : "1.5px solid #252D3D",
+                    }}
+                  >
+                    {initial}
+                  </div>
+
+                  {/* Name */}
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="font-semibold text-sm truncate leading-none"
+                      style={{ color: isMe ? "#3FEFB4" : "#F0F4FF" }}
+                    >
+                      {name}{isMe && <span className="text-[10px] font-normal ml-1" style={{ color: "#8A95A8" }}>(you)</span>}
+                    </p>
+                    {row.totalWinnings > 0 && (
+                      <p className="text-[10px] mt-0.5" style={{ color: "#F7A325" }}>
+                        ₹{row.totalWinnings.toLocaleString("en-IN")} won
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Points */}
+                  <p className="font-rajdhani font-bold text-sm shrink-0" style={{ color: isMe ? "#3FEFB4" : "#F0F4FF" }}>
+                    {row.totalPoints.toFixed(1)} <span className="text-[10px] font-normal" style={{ color: "#4A5568" }}>pts</span>
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Leaderboard CTA (shown when no data yet) */}
+      {top5.length === 0 && (
+        <div className="px-4 mb-4">
+          <Link
+            href="/leaderboard"
+            className="flex items-center justify-between rounded-2xl px-4 py-4 card-press"
+            style={{ background: "rgba(63,239,180,0.04)", border: "1px solid rgba(63,239,180,0.15)" }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
+                style={{ background: "rgba(63,239,180,0.10)" }}>
+                <span className="text-xl">🏆</span>
+              </div>
+              <div>
+                <p className="text-white font-black text-sm">Season Leaderboard</p>
+                <p className="text-xs" style={{ color: "#8A95A8" }}>IPL 2026 standings</p>
+              </div>
+            </div>
+            <span className="text-xs font-bold" style={{ color: "#3FEFB4" }}>View →</span>
+          </Link>
+        </div>
+      )}
 
       {/* ── Empty state ── */}
       {matches.length === 0 && (

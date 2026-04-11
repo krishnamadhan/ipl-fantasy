@@ -229,7 +229,7 @@ export default async function TeamDiffPage({ params, searchParams }: PageProps) 
       {/* Team name banner */}
       <div
         className="grid grid-cols-2 divide-x"
-        style={{ borderBottom: "1px solid #252D3D", divideColor: "#252D3D" }}
+        style={{ borderBottom: "1px solid #252D3D" }}
       >
         {[
           { name: name1, entry: entry1, pts: entry1.total_points ?? 0 },
@@ -285,12 +285,12 @@ export default async function TeamDiffPage({ params, searchParams }: PageProps) 
         ) : (
           <div
             className="rounded-xl overflow-hidden divide-y"
-            style={{ border: "1px solid #252D3D", divideColor: "#1C2333" }}
+            style={{ border: "1px solid #252D3D" }}
           >
             {/* Sub-header */}
             <div
               className="grid grid-cols-2 divide-x text-center py-1"
-              style={{ background: "#141920", divideColor: "#252D3D" }}
+              style={{ background: "#141920" }}
             >
               <p className="text-[10px] font-bold" style={{ color: "#3FEFB4" }}>{name1}</p>
               <p className="text-[10px] font-bold" style={{ color: "#F7A325" }}>{name2}</p>
@@ -327,7 +327,7 @@ export default async function TeamDiffPage({ params, searchParams }: PageProps) 
           {/* Captain row */}
           <div
             className="grid grid-cols-2 divide-x"
-            style={{ divideColor: "#252D3D", background: capSame ? "rgba(63,239,180,0.04)" : "#141920" }}
+            style={{ background: capSame ? "rgba(63,239,180,0.04)" : "#141920" }}
           >
             {[entry1, entry2].map((entry, i) => {
               const p = playerMap.get(entry.captain_id);
@@ -354,7 +354,7 @@ export default async function TeamDiffPage({ params, searchParams }: PageProps) 
           {/* VC row */}
           <div
             className="grid grid-cols-2 divide-x"
-            style={{ divideColor: "#252D3D", background: vcSame ? "rgba(247,163,37,0.04)" : "#141920" }}
+            style={{ background: vcSame ? "rgba(247,163,37,0.04)" : "#141920" }}
           >
             {[entry1, entry2].map((entry, i) => {
               const p = playerMap.get(entry.vc_id);
