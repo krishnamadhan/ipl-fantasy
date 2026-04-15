@@ -16,43 +16,47 @@ function cbHeaders() {
   };
 }
 
-// Dream11 IPL T20 scoring — keep in sync with src/lib/fantasy/scoring.ts
+// TATA IPL official scoring — keep in sync with src/lib/fantasy/scoring.ts
+// overs_bowled stores cricket notation (3.4 = 3 overs 4 balls), convert before economy math
+function cricketOversToDecimal(overs: number): number {
+  const full = Math.floor(overs);
+  const balls = Math.round((overs - full) * 10);
+  return full + balls / 6;
+}
+
 function calcPoints(s: any): number {
   let pts = 4; // playing XI bonus
   pts += (s.runs ?? 0) * 1;
-  pts += (s.fours ?? 0) * 0.5;
-  pts += (s.sixes ?? 0) * 1;
-  if (s.runs >= 100) pts += 8;
-  else if (s.runs >= 50) pts += 4;
-  if (s.runs === 0 && s.is_dismissed) pts -= 2;
+  pts += (s.fours ?? 0) * 1;           // boundary bonus
+  pts += (s.sixes ?? 0) * 2;           // six boundary bonus
+  // Century REPLACES half-century (not cumulative)
+  if (s.runs >= 100) pts += 16;
+  else if (s.runs >= 50) pts += 8;
+  if (s.runs === 0 && s.is_dismissed) pts -= 2; // duck penalty
   if (s.balls_faced >= 10) {
     const sr = (s.runs / s.balls_faced) * 100;
-    if (sr >= 170) pts += 6;
-    else if (sr >= 150) pts += 4;
-    else if (sr >= 130) pts += 2;
-    else if (sr < 50) pts -= 6;
+    // TATA IPL: NO SR bonuses — only penalties
+    if (sr < 50) pts -= 6;
     else if (sr < 60) pts -= 4;
     else if (sr < 70) pts -= 2;
   }
-  pts += (s.wickets ?? 0) * 20;
-  if (s.wickets >= 5) pts += 8;
-  else if (s.wickets >= 4) pts += 4;
-  else if (s.wickets >= 3) pts += 2;
-  pts += (s.maidens ?? 0) * 4;
+  pts += (s.wickets ?? 0) * 25;
+  if (s.wickets >= 5) pts += 16;
+  else if (s.wickets >= 4) pts += 8;
+  else if (s.wickets >= 3) pts += 4;
+  // Note: no 3-catch bonus in TATA IPL
+  pts += (s.maidens ?? 0) * 8;
   if (s.overs_bowled >= 2) {
-    const eco = s.runs_conceded / s.overs_bowled;
-    if (eco < 4) pts += 3;
-    else if (eco < 5) pts += 2;
-    else if (eco <= 6) pts += 1;
-    else if (eco >= 11) pts -= 3;
-    else if (eco >= 10) pts -= 2;
-    else if (eco >= 9) pts -= 1;
+    const decimalOvers = cricketOversToDecimal(s.overs_bowled);
+    const eco = decimalOvers > 0 ? s.runs_conceded / decimalOvers : 0;
+    // TATA IPL: economy BONUSES only — no penalties
+    if (eco < 5) pts += 4;
+    else if (eco <= 6) pts += 2;
   }
-  pts += (s.catches ?? 0) * 6;
-  if ((s.catches ?? 0) >= 3) pts += 4;
-  pts += (s.stumpings ?? 0) * 8;
-  pts += (s.run_outs ?? 0) * 8;
-  pts += (s.run_outs_assist ?? 0) * 4;
+  pts += (s.catches ?? 0) * 8;
+  pts += (s.stumpings ?? 0) * 12;
+  pts += (s.run_outs ?? 0) * 12;        // direct run out
+  pts += (s.run_outs_assist ?? 0) * 6;  // run out assist
   return pts;
 }
 
