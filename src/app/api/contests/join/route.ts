@@ -172,7 +172,16 @@ export async function POST(req: NextRequest) {
         `${spotsLine}\n` +
         `▶️ ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ipl11.vercel.app"}`;
 
-      await service.from("ba_notifications").insert({ group_id: groupId, message });
+      // Insert into ba_reminders with sender_phone='__system__' — banteragent's
+      // 1-min cron picks this up and sends the message directly (no "REMINDER!" wrapper).
+      await service.from("ba_reminders").insert({
+        group_id: groupId,
+        sender_phone: "__system__",
+        sender_name: "Fantasy Bot",
+        reminder_text: message,
+        remind_at: new Date().toISOString(),
+        is_group_reminder: true,
+      });
     } catch (e) {
       console.error("[join] notification insert failed:", e);
     }
