@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   const { data: match } = await admin
     .from("f11_matches")
-    .select("id, team_home, team_away, status, live_score_summary, scheduled_at")
+    .select("id, team_home, team_away, status, live_score_summary, result_summary, scheduled_at")
     .eq("id", match_id)
     .single();
 
@@ -43,6 +43,7 @@ export async function GET(req: NextRequest) {
       id: match.id,
       teams: `${match.team_home} vs ${match.team_away}`,
       status: match.status,
+      result_summary: match.result_summary,
       live_score: match.live_score_summary,
     },
     top_performers,

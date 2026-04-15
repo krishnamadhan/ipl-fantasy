@@ -28,12 +28,12 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // Mark contests as live
+    // Mark contests as live — only update already-locked contests
     await admin
       .from("f11_contests")
       .update({ status: "live" })
       .eq("match_id", match_id)
-      .in("status", ["locked", "open"]);
+      .eq("status", "locked");
 
     return NextResponse.json({ ok: true, action: "go_live" });
   }
