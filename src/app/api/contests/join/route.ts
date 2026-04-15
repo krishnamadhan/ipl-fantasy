@@ -128,5 +128,55 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to create entry" }, { status: 500 });
   }
 
+  // Fire-and-forget: queue a WhatsApp notification for the group
+  // banteragent polls ba_notifications every minute and sends pending rows.
+  (async () => {
+    try {
+      const groupId = process.env.BOT_GROUP_ID;
+      if (!groupId) return;
+
+      // Get display name from profile
+      const { data: profile } = await service
+        .from("f11_profiles")
+        .select("display_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      const displayName = profile?.display_name ?? user.email?.split("@")[0] ?? "Someone";
+
+      // Get match info
+      const { data: matchInfo } = await service
+        .from("f11_matches")
+        .select("team_home, team_away")
+        .eq("id", contest.match_id)
+        .maybeSingle();
+      const matchLabel = matchInfo
+        ? `${matchInfo.team_home} vs ${matchInfo.team_away}`
+        : "today's match";
+
+      // Current entry count (after this join)
+      const { count: totalEntries } = await service
+        .from("f11_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("contest_id", contest_id);
+      const entryCount = totalEntries ?? 1;
+
+      const teamLabel = team.team_name ? ` with *${team.team_name}*` : "";
+      const spotsLeft = contest.max_teams - entryCount;
+      const spotsLine = spotsLeft > 0
+        ? `${spotsLeft} spots remaining — join now!`
+        : "Contest is full now 🔥";
+
+      const message =
+        `🎉 *${displayName}* joined *${matchLabel}*${teamLabel}!\n` +
+        `👥 ${entryCount}/${contest.max_teams} players in\n` +
+        `${spotsLine}\n` +
+        `▶️ ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ipl11.vercel.app"}`;
+
+      await service.from("ba_notifications").insert({ group_id: groupId, message });
+    } catch (e) {
+      console.error("[join] notification insert failed:", e);
+    }
+  })();
+
   return NextResponse.json({ ok: true, entry });
 }
