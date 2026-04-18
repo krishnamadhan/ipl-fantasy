@@ -67,7 +67,6 @@ export default async function BrowseContestsPage({ params }: { params: Promise<{
   }));
 
   // Fetch user's existing entries for all contests in this match
-  const contestIds = contests.map((c: any) => c.id);
   const { data: myEntries } = contestIds.length > 0
     ? await supabase
         .from("f11_entries")
