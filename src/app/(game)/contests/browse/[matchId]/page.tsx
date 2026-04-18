@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import { formatCurrency, shortTeam } from "@/lib/utils/format";
 import ContestBrowseClient from "./ContestBrowseClient";
@@ -15,7 +15,7 @@ export default async function BrowseContestsPage({ params }: { params: Promise<{
     supabase.from("f11_matches").select("*").eq("id", matchId).single(),
     supabase
       .from("f11_contests")
-      .select("*, entry_count:f11_entries(count)")
+      .select("*")
       .eq("match_id", matchId)
       .in("status", ["open", "locked"])
       .order("entry_fee", { ascending: true }),
@@ -30,9 +30,27 @@ export default async function BrowseContestsPage({ params }: { params: Promise<{
   if (!matchRes.data) notFound();
 
   const match = matchRes.data;
-  const contests = (contestsRes.data ?? []).map((c: any) => ({
+  const rawContests = contestsRes.data ?? [];
+
+  // Fetch entry counts using service client to bypass RLS.
+  // User-session client only sees own entries in open/locked matches (RLS policy),
+  // so counts would always return 1. Service client sees all entries.
+  const contestIds = rawContests.map((c: any) => c.id);
+  const entryCounts: Record<string, number> = {};
+  if (contestIds.length > 0) {
+    const admin = await createServiceClient();
+    const { data: entryRows } = await admin
+      .from("f11_entries")
+      .select("contest_id")
+      .in("contest_id", contestIds);
+    for (const row of entryRows ?? []) {
+      entryCounts[row.contest_id] = (entryCounts[row.contest_id] ?? 0) + 1;
+    }
+  }
+
+  const contests = rawContests.map((c: any) => ({
     ...c,
-    entry_count: c.entry_count?.[0]?.count ?? 0,
+    entry_count: entryCounts[c.id] ?? 0,
   }));
   const rawTeams = teamsRes.data ?? [];
 
