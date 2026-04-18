@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { formatCurrency, formatDateTime } from "@/lib/utils/format";
 import Link from "next/link";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -11,7 +11,7 @@ export default async function ProfilePage() {
   if (!user) redirect("/login");
 
   const [profileRes, statsRes] = await Promise.all([
-    supabase.from("f11_profiles").select("*").eq("id", user.id).single(),
+    supabase.from("f11_profiles").select("*").eq("id", user.id).maybeSingle(),
     supabase
       .from("f11_entries")
       .select("id, total_points, rank, prize_won")

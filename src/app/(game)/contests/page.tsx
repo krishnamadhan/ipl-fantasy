@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency, shortTeam } from "@/lib/utils/format";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 export default async function ContestsPage() {
   const supabase = await createClient();

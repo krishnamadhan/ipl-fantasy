@@ -14,7 +14,7 @@ export default async function AppHeader() {
       .from("f11_profiles")
       .select("username, display_name, wallet_balance")
       .eq("id", user.id)
-      .single(),
+      .maybeSingle(),
     supabase
       .from("f11_matches")
       .select("id, team_home, team_away, live_score_summary")

@@ -7,7 +7,7 @@ import CountdownTimer from "@/components/ui/CountdownTimer";
 import DashboardLiveCard from "@/components/live/DashboardLiveCard";
 import HeroMatchCard from "@/components/matches/HeroMatchCard";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -19,7 +19,7 @@ export default async function DashboardPage() {
       .from("f11_profiles")
       .select("username, display_name, wallet_balance")
       .eq("id", user.id)
-      .single(),
+      .maybeSingle(),
     supabase
       .from("f11_matches")
       .select("id, team_home, team_away, venue, city, scheduled_at, status, live_score_summary")

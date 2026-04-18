@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { formatCurrency, cn } from "@/lib/utils/format";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function SeasonLeaderboardPage() {
   const supabase = await createClient();

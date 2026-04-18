@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { formatCurrency, formatDateTime } from "@/lib/utils/format";
 import type { WalletTransaction } from "@/types/wallet";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 export default async function WalletPage() {
   const supabase = await createClient();
@@ -11,7 +11,7 @@ export default async function WalletPage() {
   if (!user) redirect("/login");
 
   const [profileRes, txRes] = await Promise.all([
-    supabase.from("f11_profiles").select("wallet_balance, display_name").eq("id", user.id).single(),
+    supabase.from("f11_profiles").select("wallet_balance, display_name").eq("id", user.id).maybeSingle(),
     supabase
       .from("f11_transactions")
       .select("*")
