@@ -67,7 +67,7 @@ export default function PlayerPointsCard({
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <p className="text-white font-bold text-sm truncate">{player.name}</p>
+              <p className="text-white font-bold text-sm break-words leading-snug">{player.name}</p>
               {isCaptain && (
                 <span className="text-[9px] font-black px-1.5 py-0.5 rounded"
                   style={{ background: "rgba(245,166,35,0.20)", color: "#F5A623" }}>C 2×</span>

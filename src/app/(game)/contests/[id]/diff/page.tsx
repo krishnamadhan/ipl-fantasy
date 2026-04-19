@@ -83,7 +83,7 @@ function renderCell(
 
       <div className={cn("flex flex-col min-w-0", isLeft ? "items-start" : "items-end")}>
         <div className={cn("flex items-center gap-1", isLeft ? "" : "flex-row-reverse")}>
-          <span className="text-white text-xs font-semibold truncate max-w-[80px]">{p.name}</span>
+          <span className="text-white text-xs font-semibold break-words leading-snug">{p.name}</span>
           {cap && <Badge label="C"  color="#3FEFB4" />}
           {vc  && <Badge label="VC" color="#F7A325" />}
         </div>
@@ -337,8 +337,8 @@ export default async function TeamDiffPage({ params, searchParams }: PageProps) 
                   className={cn("flex items-center gap-2 px-3 py-2", i === 1 ? "flex-row-reverse" : "")}
                 >
                   <Badge label="C" color="#3FEFB4" />
-                  <div className={cn("flex flex-col min-w-0", i === 1 ? "items-end" : "")}>
-                    <span className="text-white text-xs font-semibold truncate">
+                  <div className={cn("flex flex-col min-w-0 flex-1", i === 1 ? "items-end" : "")}>
+                    <span className="text-white text-xs font-semibold break-words leading-snug">
                       {p?.name ?? "—"}
                     </span>
                     <span className="text-slate-500 text-[10px]">{p?.ipl_team}</span>
@@ -364,8 +364,8 @@ export default async function TeamDiffPage({ params, searchParams }: PageProps) 
                   className={cn("flex items-center gap-2 px-3 py-2", i === 1 ? "flex-row-reverse" : "")}
                 >
                   <Badge label="VC" color="#F7A325" />
-                  <div className={cn("flex flex-col min-w-0", i === 1 ? "items-end" : "")}>
-                    <span className="text-white text-xs font-semibold truncate">
+                  <div className={cn("flex flex-col min-w-0 flex-1", i === 1 ? "items-end" : "")}>
+                    <span className="text-white text-xs font-semibold break-words leading-snug">
                       {p?.name ?? "—"}
                     </span>
                     <span className="text-slate-500 text-[10px]">{p?.ipl_team}</span>
@@ -429,7 +429,7 @@ export default async function TeamDiffPage({ params, searchParams }: PageProps) 
 
                   {/* Name + team */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-xs font-semibold truncate">{p.name}</p>
+                    <p className="text-white text-xs font-semibold break-words leading-snug">{p.name}</p>
                     <p className="text-slate-500 text-[10px]">{p.ipl_team}</p>
                   </div>
 
