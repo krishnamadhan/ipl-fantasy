@@ -82,6 +82,24 @@ export async function GET(req: NextRequest) {
   function findEntry(nameQuery: string) {
     if (!nameQuery) return null;
     const q = nameQuery.toLowerCase();
+
+    // Prefer word-boundary match: query matches the START of a word in the name.
+    // "Krish" → matches "krishna madhan" (starts with "krish") but NOT
+    // "harikrishnan" mid-word. This avoids false positives like "Krish"
+    // matching "harikrishnan" before "krishnamadhan".
+    const wordMatch = allEntries!.find((e: any) => {
+      const dn = (e.profile?.display_name ?? "").toLowerCase();
+      const un = (e.profile?.username ?? "").toLowerCase();
+      return (
+        dn.startsWith(q) ||
+        un.startsWith(q) ||
+        dn.split(/[\s_]+/).some((w: string) => w.startsWith(q)) ||
+        un.split(/[\s_]+/).some((w: string) => w.startsWith(q))
+      );
+    }) ?? null;
+    if (wordMatch) return wordMatch;
+
+    // Fallback: any substring match (original behaviour)
     return allEntries!.find((e: any) => {
       const dn = (e.profile?.display_name ?? "").toLowerCase();
       const un = (e.profile?.username ?? "").toLowerCase();

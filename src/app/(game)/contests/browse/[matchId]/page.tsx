@@ -12,7 +12,7 @@ export default async function BrowseContestsPage({ params }: { params: Promise<{
   if (!user) redirect("/login");
 
   const [matchRes, contestsRes, teamsRes] = await Promise.all([
-    supabase.from("f11_matches").select("*").eq("id", matchId).single(),
+    supabase.from("f11_matches").select("*").eq("id", matchId).maybeSingle(),
     supabase
       .from("f11_contests")
       .select("*")

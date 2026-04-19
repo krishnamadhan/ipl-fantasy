@@ -5,7 +5,7 @@ import LiveScoreHeader from "@/components/live/LiveScoreHeader";
 import PlayerPointsCard from "@/components/live/PlayerPointsCard";
 import LiveLeaderboard from "@/components/live/LiveLeaderboard";
 
-export const revalidate = 0; // always fresh — this is the live match page
+export const dynamic = "force-dynamic"; // always fresh — live match page, never cache
 
 export default async function LiveMatchPage({
   params,
