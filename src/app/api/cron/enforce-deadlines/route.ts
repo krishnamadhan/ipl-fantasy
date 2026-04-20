@@ -45,9 +45,11 @@ async function cbGet(path: string): Promise<any | null> {
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
-  const hasCronSecret = process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  const cronSecret = process.env.CRON_SECRET;
+  const hasCronSecret = cronSecret && authHeader === `Bearer ${cronSecret}`;
 
   if (!hasCronSecret) {
+    if (!cronSecret) return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();

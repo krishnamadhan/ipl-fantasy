@@ -80,18 +80,24 @@ export function calcFantasyPoints(
     bd.batting.duck = -2;
   }
 
-  // Strike rate penalty (min 10 balls, WK/BAT/AR only — NOT bowlers)
-  // TATA IPL: no positive SR bonus, only penalties
+  // Strike rate bonus/penalty (min 10 balls, WK/BAT/AR only — NOT bowlers)
   if (stats.balls_faced >= 10 && role !== "BOWL") {
     const sr = (stats.runs / stats.balls_faced) * 100;
-    if (sr < 50) {
-      bd.batting.strike_rate = -6;
-    } else if (sr < 60) {
-      bd.batting.strike_rate = -4;
-    } else if (sr <= 70) {
+    if (sr >= 170) {
+      bd.batting.strike_rate = 6;
+    } else if (sr >= 150) {
+      bd.batting.strike_rate = 4;
+    } else if (sr >= 130) {
+      bd.batting.strike_rate = 2;
+    } else if (sr >= 70) {
+      bd.batting.strike_rate = 0; // 70-129: no bonus/penalty
+    } else if (sr >= 60) {
       bd.batting.strike_rate = -2;
+    } else if (sr >= 50) {
+      bd.batting.strike_rate = -4;
+    } else {
+      bd.batting.strike_rate = -6;
     }
-    // SR > 70: no bonus in TATA IPL scoring
   }
 
   // === BOWLING ===
@@ -109,25 +115,34 @@ export function calcFantasyPoints(
     bd.bowling.haul_bonus = 4;
   }
 
-  bd.bowling.maidens = stats.maidens * 8;
+  bd.bowling.maidens = stats.maidens * 12;
 
-  // Economy rate: min 2 overs (12 balls), TATA IPL only has bonuses — NO penalties
-  // Dream11 TATA IPL 2025 tiers: 4–4.99 RPO = +4, 5–6 RPO = +2 (eco below 4 also gets +4)
+  // Economy rate bonus/penalty: min 2 overs (12 balls)
   const ballsBowled = totalBallsBowled(stats.overs_bowled);
   if (ballsBowled >= 12) {
     const decimalOvers = ballsBowled / 6;
     const eco = stats.runs_conceded / decimalOvers;
     if (eco < 5) {
-      bd.bowling.economy = 4;  // covers 0–4.99 (below 4 is even better, also +4)
-    } else if (eco <= 6) {
-      bd.bowling.economy = 2;  // 5.00–6.00
+      bd.bowling.economy = 6;
+    } else if (eco < 6) {
+      bd.bowling.economy = 4;
+    } else if (eco <= 7) {
+      bd.bowling.economy = 2;
+    } else if (eco <= 11) {
+      bd.bowling.economy = 0;
+    } else if (eco <= 12) {
+      bd.bowling.economy = -2;
+    } else if (eco <= 13) {
+      bd.bowling.economy = -4;
+    } else {
+      bd.bowling.economy = -6;
     }
-    // eco > 6: 0 points, no negatives in TATA IPL economy system
   }
 
   // === FIELDING ===
   bd.fielding.catches = stats.catches * 8;
-  // No "3+ catch bonus" in TATA IPL official scoring
+  // 3+ catches in a match: +4 bonus
+  if (stats.catches >= 3) bd.fielding.catches += 4;
   bd.fielding.stumpings = stats.stumpings * 12;
   bd.fielding.run_outs =
     (stats.run_outs * 12) + (stats.run_outs_assist * 6);

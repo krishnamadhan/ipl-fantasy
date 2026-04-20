@@ -52,7 +52,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Team is for a different match" }, { status: 400 });
   }
 
-  // Check spots
+  // Check spots (non-atomic — a race can overfill by 1 in rare cases;
+  // the f11_entries unique constraint on (contest_id, team_id) is the hard guard)
   const { count: entryCount } = await service
     .from("f11_entries")
     .select("id", { count: "exact", head: true })
@@ -117,13 +118,21 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (entryErr) {
+    // Refund the wallet — retry up to 3 times to ensure no silent money loss.
     if (contest.entry_fee > 0) {
-      await service.rpc("f11_credit_wallet", {
-        p_user_id: user.id,
-        p_amount: contest.entry_fee,
-        p_reason: "Refund: entry failed",
-        p_reference_id: contest_id,
-      });
+      let refunded = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { error: refundErr } = await service.rpc("f11_credit_wallet", {
+          p_user_id: user.id,
+          p_amount: contest.entry_fee,
+          p_reason: "Refund: entry failed",
+          p_reference_id: contest_id,
+        });
+        if (!refundErr) { refunded = true; break; }
+        console.error(`[join] refund attempt ${attempt + 1} failed:`, refundErr.message);
+        if (attempt < 2) await new Promise(r => setTimeout(r, 500));
+      }
+      if (!refunded) console.error(`[join] CRITICAL: refund failed for user ${user.id} contest ${contest_id} amount ${contest.entry_fee}`);
     }
     return NextResponse.json({ error: "Failed to create entry" }, { status: 500 });
   }

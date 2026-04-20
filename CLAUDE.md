@@ -273,6 +273,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 RAPIDAPI_KEY
 CRON_SECRET          # optional, secures the /api/cron/sync-live endpoint
+BOT_GROUP_ID         # WhatsApp group JID — contest join notifications sent here
+BOT_SECRET           # must match FANTASY_BOT_SECRET in banteragent/.env
 ```
 
 ---

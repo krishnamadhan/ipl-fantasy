@@ -18,7 +18,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
 
   const { data: entries } = await service
     .from("f11_entries")
-    .select("id, user_id, rank, total_points")
+    .select("id, user_id, rank, total_points, entry_fee_paid")
     .eq("contest_id", id)
     .order("total_points", { ascending: false });
 
@@ -26,7 +26,11 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     return NextResponse.json({ ok: true, message: "No entries" });
   }
 
-  const tiers = calcPrizeTiers(contest.prize_pool, contest.prize_pool_type, entries.length);
+  // Use actual collected fees as prize pool for non-guaranteed contests.
+  // For guaranteed (platform-subsidized) contests, prize_pool is already set correctly.
+  const collected = entries.reduce((s, e) => s + (e.entry_fee_paid ?? 0), 0);
+  const actualPrizePool = Math.min(collected, contest.prize_pool);
+  const tiers = calcPrizeTiers(actualPrizePool, contest.prize_pool_type, entries.length);
 
   for (const entry of entries) {
     const rank = entry.rank ?? entries.findIndex((e) => e.id === entry.id) + 1;

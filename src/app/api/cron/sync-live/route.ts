@@ -262,9 +262,11 @@ function parseScorecardStats(scorecard: any): { stats: ParsedPlayerStat[]; match
 export async function GET(req: NextRequest) {
   // Accept either the cron secret OR a logged-in admin session
   const authHeader = req.headers.get("authorization");
-  const hasCronSecret = process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  const cronSecret = process.env.CRON_SECRET;
+  const hasCronSecret = cronSecret && authHeader === `Bearer ${cronSecret}`;
 
   if (!hasCronSecret) {
+    if (!cronSecret) return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
     // Fall back to checking admin session cookie
     const { createClient } = await import("@/lib/supabase/server");
     const supabase = await createClient();

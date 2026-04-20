@@ -14,7 +14,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
   // Only allow transition from 'locked' state
   const { data: match } = await service.from("f11_matches").select("status").eq("id", id).single();
   if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });
-  if (match.status !== "locked" && match.status !== "open") {
+  if (match.status !== "locked") {
     return NextResponse.json({
       error: `Cannot go live from '${match.status}'`
     }, { status: 400 });

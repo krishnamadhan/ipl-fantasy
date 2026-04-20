@@ -206,7 +206,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   // Allow internal cron calls (from enforce-deadlines auto-live)
   const internalHeader = _req.headers.get("x-internal-cron");
-  const isInternalCron = internalHeader && internalHeader === process.env.CRON_SECRET;
+  const isInternalCron = !!(internalHeader && process.env.CRON_SECRET && internalHeader === process.env.CRON_SECRET);
 
   const admin = await createServiceClient();
 
