@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 const CB_HOST = "cricbuzz-cricket.p.rapidapi.com";
@@ -85,14 +85,20 @@ function extractPlayers(data: any): Array<{ cricId: string; name: string; roleRa
   return results;
 }
 
-export async function POST() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function POST(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = req.headers.get("authorization");
+  const isCron = cronSecret && authHeader === `Bearer ${cronSecret}`;
 
   const admin = await createServiceClient();
-  const { data: profile } = await admin.from("f11_profiles").select("is_admin").eq("id", user.id).single();
-  if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  if (!isCron) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { data: profile } = await admin.from("f11_profiles").select("is_admin").eq("id", user.id).single();
+    if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   if (!process.env.RAPIDAPI_KEY) {
     return NextResponse.json({ error: "RAPIDAPI_KEY not set in .env.local" }, { status: 500 });
