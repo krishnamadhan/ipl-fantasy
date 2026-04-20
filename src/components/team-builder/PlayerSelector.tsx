@@ -262,7 +262,7 @@ export default function PlayerSelector({
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  <p className="text-sm font-bold text-white truncate">{p.name}</p>
+                  <p className="text-sm font-bold text-white break-words leading-snug flex-1">{p.name}</p>
                   <span
                     className="text-[9px] px-1.5 py-0 rounded font-black shrink-0"
                     style={{ background: badge.bg, color: badge.color }}
