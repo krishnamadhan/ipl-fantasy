@@ -39,23 +39,31 @@ export default async function DashboardPage() {
   // Extra data for hero card + active entries + leaderboard preview
   const [heroContestsRes, heroTeamRes, myEntriesRes, lbEntriesRes] = await Promise.all([
     nextMatch
-      ? supabase.from("f11_contests").select("id, prize_pool").eq("match_id", nextMatch.id).in("status", ["open", "locked"])
+      ? supabase.from("f11_contests").select("id, prize_pool").eq("match_id", nextMatch.id).in("status", ["open", "locked"]).catch(() => ({ data: [] }))
       : Promise.resolve({ data: [] }),
     nextMatch
-      ? supabase.from("f11_teams").select("id").eq("match_id", nextMatch.id).eq("user_id", user.id).limit(1)
+      ? supabase.from("f11_entries")
+          .select("id, contest:f11_contests!inner(match_id)")
+          .eq("user_id", user.id)
+          .eq("f11_contests.match_id", nextMatch.id)
+          .limit(1)
+          .catch(() => ({ data: [] }))
       : Promise.resolve({ data: [] }),
     (supabase as any)
       .from("f11_entries")
-      .select("id, total_points, rank, contest:f11_contests(id, name, status, prize_pool, match:f11_matches(id, team_home, team_away))")
+      .select("id, total_points, rank, contest:f11_contests(id, name, status, prize_pool, match:f11_matches!match_id(id, team_home, team_away))")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(10),
-    // Leaderboard: aggregate completed entries per user (lightweight)
+      .limit(10)
+      .then((r: any) => r)
+      .catch(() => ({ data: [] })),
+    // Leaderboard: aggregate completed entries per user
     (supabase as any)
       .from("f11_entries")
       .select("user_id, total_points, prize_won, contest:f11_contests!inner(status)")
-      .eq("contest.status", "completed")
-      .limit(500),
+      .limit(500)
+      .then((r: any) => r)
+      .catch(() => ({ data: [] })),
   ]);
 
   const heroContests     = (heroContestsRes as any).data ?? [];

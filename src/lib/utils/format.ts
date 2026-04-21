@@ -53,7 +53,8 @@ export function timeUntil(dateStr: string): string {
   return `${m}m`;
 }
 
-export function shortTeam(name: string): string {
+export function shortTeam(name: string | null | undefined): string {
+  if (!name) return "TBD";
   const map: Record<string, string> = {
     "Mumbai Indians": "MI",
     "Chennai Super Kings": "CSK",
