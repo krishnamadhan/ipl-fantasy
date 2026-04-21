@@ -19,12 +19,18 @@ export async function GET(req: NextRequest) {
   const admin = await createServiceClient();
 
   // Find the admin-created group contest (created_by IS NULL) for this match
+  const { data: matchRow } = await admin
+    .from("f11_matches")
+    .select("status")
+    .eq("id", match_id)
+    .single();
+
   const { data: contests } = await admin
     .from("f11_contests")
     .select("id, status, prize_pool")
     .eq("match_id", match_id)
     .is("created_by", null)
-    .in("status", ["open", "locked", "live", "completed"])
+    .in("status", ["open", "locked", "completed"])
     .order("created_at", { ascending: true })
     .limit(1);
 
@@ -51,5 +57,5 @@ export async function GET(req: NextRequest) {
     prize_won: e.prize_won ?? 0,
   }));
 
-  return NextResponse.json({ leaderboard, contest_status: contest.status });
+  return NextResponse.json({ leaderboard, contest_status: contest.status, match_status: matchRow?.status ?? contest.status });
 }
