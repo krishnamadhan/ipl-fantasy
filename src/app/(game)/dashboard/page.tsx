@@ -39,31 +39,32 @@ export default async function DashboardPage() {
   // Extra data for hero card + active entries + leaderboard preview
   const [heroContestsRes, heroTeamRes, myEntriesRes, lbEntriesRes] = await Promise.all([
     nextMatch
-      ? supabase.from("f11_contests").select("id, prize_pool").eq("match_id", nextMatch.id).in("status", ["open", "locked"]).catch(() => ({ data: [] }))
+      ? Promise.resolve(supabase.from("f11_contests").select("id, prize_pool").eq("match_id", nextMatch.id).in("status", ["open", "locked"])).catch(() => ({ data: [] }))
       : Promise.resolve({ data: [] }),
     nextMatch
-      ? supabase.from("f11_entries")
-          .select("id, contest:f11_contests!inner(match_id)")
-          .eq("user_id", user.id)
-          .eq("f11_contests.match_id", nextMatch.id)
-          .limit(1)
-          .catch(() => ({ data: [] }))
+      ? Promise.resolve(
+          supabase.from("f11_entries")
+            .select("id, contest:f11_contests!inner(match_id)")
+            .eq("user_id", user.id)
+            .eq("f11_contests.match_id", nextMatch.id)
+            .limit(1)
+        ).catch(() => ({ data: [] }))
       : Promise.resolve({ data: [] }),
-    (supabase as any)
-      .from("f11_entries")
-      .select("id, total_points, rank, contest:f11_contests(id, name, status, prize_pool, match:f11_matches!match_id(id, team_home, team_away))")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(10)
-      .then((r: any) => r)
-      .catch(() => ({ data: [] })),
+    Promise.resolve(
+      (supabase as any)
+        .from("f11_entries")
+        .select("id, total_points, rank, contest:f11_contests(id, name, status, prize_pool, match:f11_matches!match_id(id, team_home, team_away))")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(10)
+    ).catch(() => ({ data: [] })),
     // Leaderboard: aggregate completed entries per user
-    (supabase as any)
-      .from("f11_entries")
-      .select("user_id, total_points, prize_won, contest:f11_contests!inner(status)")
-      .limit(500)
-      .then((r: any) => r)
-      .catch(() => ({ data: [] })),
+    Promise.resolve(
+      (supabase as any)
+        .from("f11_entries")
+        .select("user_id, total_points, prize_won, contest:f11_contests!inner(status)")
+        .limit(500)
+    ).catch(() => ({ data: [] })),
   ]);
 
   const heroContests     = (heroContestsRes as any).data ?? [];
