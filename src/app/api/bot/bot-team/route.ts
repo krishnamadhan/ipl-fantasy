@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, entry_id: entry.id });
+  return NextResponse.json({ ok: true, entry_id: entry?.id });
 }
 
 export async function PUT(req: NextRequest) {
