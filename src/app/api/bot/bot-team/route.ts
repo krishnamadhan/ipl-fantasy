@@ -40,23 +40,29 @@ export async function POST(req: NextRequest) {
   if (match.status === "live" || match.status === "completed")
     return NextResponse.json({ error: "Match already started — team locked" }, { status: 409 });
 
-  // Upsert entry (one per user per contest)
-  const { data: entry, error } = await admin
+  // Check if entry already exists (unique constraint may not be present in all envs)
+  const { data: existing } = await admin
     .from("f11_entries")
-    .upsert(
-      {
-        contest_id,
-        user_id: BOT_USER_ID,
-        team_name: team_name ?? "machi",
-        player_ids,
-        captain_id,
-        vc_id,
-        entry_fee_paid: 0,
-      },
-      { onConflict: "contest_id,user_id" }
-    )
     .select("id")
-    .single();
+    .eq("contest_id", contest_id)
+    .eq("user_id", BOT_USER_ID)
+    .maybeSingle();
+
+  let entry, error;
+  if (existing) {
+    ({ data: entry, error } = await admin
+      .from("f11_entries")
+      .update({ team_name: team_name ?? "machi", player_ids, captain_id, vc_id })
+      .eq("id", existing.id)
+      .select("id")
+      .single());
+  } else {
+    ({ data: entry, error } = await admin
+      .from("f11_entries")
+      .insert({ contest_id, user_id: BOT_USER_ID, team_name: team_name ?? "machi", player_ids, captain_id, vc_id, entry_fee_paid: 0 })
+      .select("id")
+      .single());
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
