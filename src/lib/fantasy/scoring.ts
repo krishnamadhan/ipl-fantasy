@@ -80,17 +80,13 @@ export function calcFantasyPoints(
     bd.batting.duck = -2;
   }
 
-  // Strike rate bonus/penalty (min 10 balls, WK/BAT/AR only — NOT bowlers)
+  // Strike rate penalty (min 10 balls, WK/BAT/AR only — NOT bowlers)
+  // TATA IPL spec §8.2: Only penalties for low SR. No SR bonuses.
+  // SR > 70: 0, 60-70: -2, 50-59.99: -4, <50: -6
   if (stats.balls_faced >= 10 && role !== "BOWL") {
     const sr = (stats.runs / stats.balls_faced) * 100;
-    if (sr >= 170) {
-      bd.batting.strike_rate = 6;
-    } else if (sr >= 150) {
-      bd.batting.strike_rate = 4;
-    } else if (sr >= 130) {
-      bd.batting.strike_rate = 2;
-    } else if (sr >= 70) {
-      bd.batting.strike_rate = 0; // 70-129: no bonus/penalty
+    if (sr >= 70) {
+      bd.batting.strike_rate = 0; // 70+: no bonus or penalty
     } else if (sr >= 60) {
       bd.batting.strike_rate = -2;
     } else if (sr >= 50) {
@@ -115,27 +111,21 @@ export function calcFantasyPoints(
     bd.bowling.haul_bonus = 4;
   }
 
-  bd.bowling.maidens = stats.maidens * 12;
+  // Maiden over: +8 pts each (TATA IPL spec §8.2)
+  bd.bowling.maidens = stats.maidens * 8;
 
-  // Economy rate bonus/penalty: min 2 overs (12 balls)
+  // Economy rate bonus ONLY — TATA IPL has no economy penalties (spec §8.2)
+  // Min 2 overs (12 balls). Tiers: <5 RPO = +4, 5–6 RPO = +2, >6 = 0
   const ballsBowled = totalBallsBowled(stats.overs_bowled);
   if (ballsBowled >= 12) {
     const decimalOvers = ballsBowled / 6;
     const eco = stats.runs_conceded / decimalOvers;
     if (eco < 5) {
-      bd.bowling.economy = 6;
-    } else if (eco < 6) {
       bd.bowling.economy = 4;
-    } else if (eco <= 7) {
+    } else if (eco <= 6) {
       bd.bowling.economy = 2;
-    } else if (eco <= 11) {
-      bd.bowling.economy = 0;
-    } else if (eco <= 12) {
-      bd.bowling.economy = -2;
-    } else if (eco <= 13) {
-      bd.bowling.economy = -4;
     } else {
-      bd.bowling.economy = -6;
+      bd.bowling.economy = 0; // >6 RPO: no bonus or penalty
     }
   }
 
