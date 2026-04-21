@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,11 +27,8 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!count) return NextResponse.json({ error: "Update blocked — RLS denied write. Run SQL: UPDATE f11_matches SET status='live' WHERE id='" + id + "';" }, { status: 500 });
 
-  // Service client for non-RLS ops (best-effort, may fail without service key)
-  try {
-    const service = await createServiceClient();
-    await service.from("f11_contests").update({ status: "live" }).eq("match_id", id).in("status", ["open", "locked"]);
-  } catch {}
+  // Contests stay "locked" during live match — "live" is not a valid contest status
+  await supabase.from("f11_contests").update({ status: "locked" }).eq("match_id", id).in("status", ["open", "scheduled"]);
 
   return NextResponse.json({ ok: true });
 }
