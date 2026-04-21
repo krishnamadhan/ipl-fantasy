@@ -162,22 +162,18 @@ export async function POST(req: NextRequest) {
         ? `${matchInfo.team_home} vs ${matchInfo.team_away}`
         : "today's match";
 
-      // Current entry count (after this join)
-      const { count: totalEntries } = await service
-        .from("f11_entries")
-        .select("id", { count: "exact", head: true })
-        .eq("contest_id", contest_id);
-      const entryCount = totalEntries ?? 1;
+      // entryCount was fetched before the insert — add 1 for this join
+      const joinedCount = (entryCount ?? 0) + 1;
 
       const teamLabel = team.team_name ? ` with *${team.team_name}*` : "";
-      const spotsLeft = contest.max_teams - entryCount;
+      const spotsLeft = contest.max_teams - joinedCount;
       const spotsLine = spotsLeft > 0
         ? `${spotsLeft} spots remaining — join now!`
         : "Contest is full now 🔥";
 
       const message =
         `🎉 *${displayName}* joined *${contest.name}* (${matchLabel})${teamLabel}!\n` +
-        `👥 ${entryCount}/${contest.max_teams} players in\n` +
+        `👥 ${joinedCount}/${contest.max_teams} players in\n` +
         `${spotsLine}\n` +
         `▶️ ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ipl11.vercel.app"}`;
 
