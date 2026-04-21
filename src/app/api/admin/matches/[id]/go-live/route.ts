@@ -23,8 +23,9 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     await supabase.from("f11_contests").update({ status: "locked" }).eq("match_id", id).eq("status", "open");
   }
 
-  const { error } = await supabase.from("f11_matches").update({ status: "live" }).eq("id", id);
+  const { error, count } = await supabase.from("f11_matches").update({ status: "live" }, { count: "exact" }).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!count) return NextResponse.json({ error: "Update blocked — RLS denied write. Run SQL: UPDATE f11_matches SET status='live' WHERE id='" + id + "';" }, { status: 500 });
 
   // Service client for non-RLS ops (best-effort, may fail without service key)
   try {

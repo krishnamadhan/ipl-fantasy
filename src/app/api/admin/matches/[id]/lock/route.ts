@@ -15,15 +15,17 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
   if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });
 
   if (match.status === "scheduled") {
-    const { error } = await supabase.from("f11_matches").update({ status: "open" }).eq("id", id).eq("status", "scheduled");
+    const { error, count } = await supabase.from("f11_matches").update({ status: "open" }, { count: "exact" }).eq("id", id).eq("status", "scheduled");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!count) return NextResponse.json({ error: "Update blocked — check RLS policy or match status" }, { status: 500 });
     await supabase.from("f11_contests").update({ status: "open" }).eq("match_id", id).eq("status", "scheduled");
     return NextResponse.json({ ok: true, transition: "scheduled→open" });
   }
 
   if (match.status === "open") {
-    const { error } = await supabase.from("f11_matches").update({ status: "locked" }).eq("id", id).eq("status", "open");
+    const { error, count } = await supabase.from("f11_matches").update({ status: "locked" }, { count: "exact" }).eq("id", id).eq("status", "open");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!count) return NextResponse.json({ error: "Update blocked — check RLS policy or match status" }, { status: 500 });
     await supabase.from("f11_contests").update({ status: "locked" }).eq("match_id", id).eq("status", "open");
     return NextResponse.json({ ok: true, transition: "open→locked" });
   }
