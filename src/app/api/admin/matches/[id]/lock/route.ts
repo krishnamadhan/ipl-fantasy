@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
-// Opens team creation for a match (scheduled → open)
+// Opens team creation (scheduled → open) OR force-locks (open → locked)
 export async function POST(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
@@ -11,12 +11,25 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
   const service = await createServiceClient();
   const { data: profile } = await service.from("f11_profiles").select("is_admin").eq("id", user.id).single();
   if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { error } = await service
-    .from("f11_matches")
-    .update({ status: "open" })
-    .eq("id", id)
-    .eq("status", "scheduled");
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  const { data: match } = await service.from("f11_matches").select("status").eq("id", id).single();
+  if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });
+
+  if (match.status === "scheduled") {
+    // scheduled → open
+    const { error } = await service.from("f11_matches").update({ status: "open" }).eq("id", id).eq("status", "scheduled");
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await service.from("f11_contests").update({ status: "open" }).eq("match_id", id).eq("status", "scheduled");
+    return NextResponse.json({ ok: true, transition: "scheduled→open" });
+  }
+
+  if (match.status === "open") {
+    // open → locked (force lock)
+    const { error } = await service.from("f11_matches").update({ status: "locked" }).eq("id", id).eq("status", "open");
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await service.from("f11_contests").update({ status: "locked" }).eq("match_id", id).eq("status", "open");
+    return NextResponse.json({ ok: true, transition: "open→locked" });
+  }
+
+  return NextResponse.json({ error: `Cannot lock from '${match.status}'` }, { status: 400 });
 }
