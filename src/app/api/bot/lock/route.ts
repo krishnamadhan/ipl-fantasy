@@ -28,12 +28,9 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // Mark contests as live — only update already-locked contests
-    await admin
-      .from("f11_contests")
-      .update({ status: "live" })
-      .eq("match_id", match_id)
-      .eq("status", "locked");
+    // NOTE: f11_contests has no 'live' status in its CHECK constraint.
+    // Valid values: open, locked, completed, cancelled.
+    // Contests remain 'locked' while the match is live — no status update needed here.
 
     return NextResponse.json({ ok: true, action: "go_live" });
   }
