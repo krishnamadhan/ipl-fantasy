@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   if (player_ids.length !== 11)
     return NextResponse.json({ error: "Must pick exactly 11 players" }, { status: 400 });
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   // Check match is still open
   const { data: match } = await admin
@@ -81,7 +81,7 @@ export async function PUT(req: NextRequest) {
   if (player_ids.length !== 11)
     return NextResponse.json({ error: "Must pick exactly 11 players" }, { status: 400 });
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   // Check match is still open (can't edit after first ball)
   const { data: match } = await admin
