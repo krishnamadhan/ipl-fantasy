@@ -8,6 +8,7 @@ export interface PlayerWithMeta extends IplPlayer {
   selection_pct?: number;
   last_points?: number;
   is_playing_xi?: boolean;
+  last_match_stats?: { runs: number; wickets: number; catches: number; fantasy_points: number } | null;
 }
 
 type SortKey = "credits_desc" | "credits_asc" | "points_desc" | "sel_desc";
@@ -103,7 +104,8 @@ export default function PlayerSelector({
     return list;
   }, [players, role, teamFilter, search, sort, selectedIds, teamHome, teamAway]);
 
-  const xiSynced = players.some((p) => p.is_playing_xi !== undefined);
+  // XI is "synced" only when at least one player is confirmed PLAYING (not just pre-populated as false)
+  const xiSynced = players.some((p) => p.is_playing_xi === true);
   const playingCount = players.filter((p) => p.is_playing_xi === true).length;
   const activeColor = ROLE_ACTIVE[role];
 
@@ -222,6 +224,15 @@ export default function PlayerSelector({
           const teamShort = shortTeamName(p.ipl_team);
           const xiStatus = p.is_playing_xi;
           const badge = ROLE_BADGE[p.role];
+          const lms = p.last_match_stats;
+          // Build last-match summary string shown pre-toss
+          const lastMatchLine = lms
+            ? [
+                lms.runs > 0 ? `${lms.runs}R` : null,
+                lms.wickets > 0 ? `${lms.wickets}W` : null,
+                lms.catches > 0 ? `${lms.catches}C` : null,
+              ].filter(Boolean).join(" · ") || `${lms.fantasy_points} pts`
+            : null;
 
           return (
             <div
@@ -270,9 +281,10 @@ export default function PlayerSelector({
                     {p.role}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-white/40 text-xs">{teamShort}</span>
-                  {xiStatus === true && (
+                  {/* Post-toss: show PLAYING / BENCH */}
+                  {xiSynced && xiStatus === true && (
                     <span
                       className="text-[9px] px-1.5 py-0 rounded font-bold"
                       style={{ background: "rgba(34,197,94,0.15)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.25)" }}
@@ -280,12 +292,18 @@ export default function PlayerSelector({
                       PLAYING
                     </span>
                   )}
-                  {xiStatus === false && (
+                  {xiSynced && xiStatus === false && (
                     <span
                       className="text-[9px] px-1.5 py-0 rounded font-bold"
                       style={{ background: "rgba(229,57,53,0.12)", color: "#f87171", border: "1px solid rgba(229,57,53,0.20)" }}
                     >
                       BENCH
+                    </span>
+                  )}
+                  {/* Pre-toss: show last match stats */}
+                  {!xiSynced && lastMatchLine && (
+                    <span className="text-[9px] font-medium" style={{ color: "#94a3b8" }}>
+                      Last: {lastMatchLine}
                     </span>
                   )}
                 </div>

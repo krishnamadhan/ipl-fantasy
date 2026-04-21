@@ -20,7 +20,7 @@ export default async function TeamBuilderPage({
 
   const admin = await createServiceClient();
 
-  const [matchRes, playersRes, teamCountRes, matchPlayersRes] = await Promise.all([
+  const [matchRes, playersRes, teamCountRes, matchPlayersRes, lastStatsRes] = await Promise.all([
     admin.from("f11_matches").select("*").eq("id", matchId).single(),
     admin
       .from("f11_players")
@@ -36,6 +36,11 @@ export default async function TeamBuilderPage({
       .from("f11_match_players")
       .select("player_id, is_playing_xi")
       .eq("match_id", matchId),
+    // Last match stats — fetch recent completed matches' stats, pick latest per player in JS
+    admin
+      .from("f11_player_stats")
+      .select("player_id, runs, wickets, catches, stumpings, fantasy_points, match_id, f11_matches!match_id(scheduled_at, status)")
+      .limit(2000),
   ]);
 
   if (!matchRes.data) notFound();
@@ -51,6 +56,28 @@ export default async function TeamBuilderPage({
     playingXiMap.set(mp.player_id, mp.is_playing_xi);
   }
 
+  // Build last-match stats map: pick the most recent completed match per player
+  const lastStatsMap = new Map<string, { runs: number; wickets: number; catches: number; fantasy_points: number }>();
+  const rawStats = ((lastStatsRes as any).data ?? []) as any[];
+  // Sort by scheduled_at descending so first occurrence per player is the most recent
+  rawStats
+    .filter((s) => (s.f11_matches as any)?.status === "completed")
+    .sort((a, b) => {
+      const tA = new Date((a.f11_matches as any)?.scheduled_at ?? 0).getTime();
+      const tB = new Date((b.f11_matches as any)?.scheduled_at ?? 0).getTime();
+      return tB - tA;
+    })
+    .forEach((s) => {
+      if (!lastStatsMap.has(s.player_id)) {
+        lastStatsMap.set(s.player_id, {
+          runs: s.runs ?? 0,
+          wickets: s.wickets ?? 0,
+          catches: (s.catches ?? 0) + (s.stumpings ?? 0),
+          fantasy_points: s.fantasy_points ?? 0,
+        });
+      }
+    });
+
   // Normalize for comparison — handles case differences and minor whitespace
   const norm = (s: string) => (s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
   const homeNorm = norm(match.team_home);
@@ -63,6 +90,7 @@ export default async function TeamBuilderPage({
     .map((p) => ({
       ...p,
       is_playing_xi: playingXiMap.has(p.id) ? playingXiMap.get(p.id) : undefined,
+      last_match_stats: lastStatsMap.get(p.id) ?? null,
     }));
 
   // If editing an existing team, load it and verify ownership
