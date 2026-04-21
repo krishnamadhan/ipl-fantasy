@@ -102,13 +102,15 @@ export async function GET(req: NextRequest) {
   // Poll Cricbuzz for toss result. Once toss_winner is set in DB, step 3 can
   // trigger playing XI sync 10 min later, giving users ~20 min before lock.
   if (process.env.RAPIDAPI_KEY) {
+    // Also include recently-locked matches (toss can happen right at match time)
+    const tossWindow = new Date(nowMs - 60 * 60 * 1000).toISOString(); // 1h past start
     const { data: nearMatches } = await admin
       .from("f11_matches")
       .select("id, team_home, team_away, cricapi_match_id, toss_winner, scheduled_at")
-      .eq("status", "open")
+      .in("status", ["open", "locked", "live"])
       .is("toss_winner", null)
       .lte("scheduled_at", in90m)
-      .gte("scheduled_at", now); // still in future (not yet locked)
+      .gte("scheduled_at", tossWindow); // within 1h past start
 
     for (const m of nearMatches ?? []) {
       if (!m.cricapi_match_id) continue;
@@ -147,13 +149,14 @@ export async function GET(req: NextRequest) {
   // Trigger playing XI sync to give users time to update their team before lock.
   const tenMinAgo = new Date(nowMs - 10 * 60 * 1000).toISOString();
 
+  const xiWindow = new Date(nowMs - 4 * 60 * 60 * 1000).toISOString(); // within 4h of start
   const { data: tossedMatches } = await admin
     .from("f11_matches")
     .select("id, team_home, team_away, toss_detected_at")
-    .eq("status", "open")
+    .in("status", ["open", "locked", "live"])
     .not("toss_winner", "is", null)
     .lte("toss_detected_at", tenMinAgo) // toss happened ≥ 10 min ago
-    .gte("scheduled_at", now);          // match not yet started (still open window)
+    .gte("scheduled_at", xiWindow);     // within 4h window of match start
 
   for (const m of tossedMatches ?? []) {
     // Check if XI already synced for this match
