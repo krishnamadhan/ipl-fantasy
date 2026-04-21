@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number): string {
-  return `${amount.toLocaleString("en-IN")} pts`;
+  return `₹${amount.toLocaleString("en-IN")}`;
 }
 
 const IST: Intl.DateTimeFormatOptions = { timeZone: "Asia/Kolkata" };

@@ -130,7 +130,8 @@ export default async function SeasonLeaderboardPage() {
         </div>
       )}
 
-      {/* Table header */}
+      {/* Table */}
+      <div className="overflow-x-auto"><div style={{minWidth:"320px"}}>
       <div className="grid grid-cols-[36px_1fr_64px_72px] gap-2 px-4 py-2.5 border-b border-slate-800">
         <span className="text-[9px] text-slate-600 font-black uppercase">#</span>
         <span className="text-[9px] text-slate-600 font-black uppercase">Player</span>
@@ -194,6 +195,7 @@ export default async function SeasonLeaderboardPage() {
           </div>
         );
       })}
+      </div></div>{/* /overflow-x-auto */}
     </div>
   );
 }

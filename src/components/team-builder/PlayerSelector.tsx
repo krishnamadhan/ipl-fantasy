@@ -200,7 +200,7 @@ export default function PlayerSelector({
       {/* Column headers */}
       <div
         className="grid grid-cols-[1fr_36px_38px_36px_36px] px-4 pt-2 pb-1.5 text-[9px] font-black uppercase tracking-wider border-b border-t"
-        style={{ color: "rgba(255,255,255,0.30)", borderColor: "#1a1a1a" }}
+        style={{ minWidth:"280px", color: "rgba(255,255,255,0.30)", borderColor: "#1a1a1a" }}
       >
         <span>Player</span>
         <span className="text-right">Pts</span>

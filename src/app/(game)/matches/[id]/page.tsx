@@ -235,6 +235,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
                 <div className="w-2 h-2 rounded-full" style={{ background: homeColor }} />
                 <p className="text-white text-xs font-black uppercase tracking-wider">Batting</p>
               </div>
+              <div className="overflow-x-auto"><div style={{minWidth:"280px"}}>
               <div className="grid grid-cols-[1fr_36px_36px_36px_48px] gap-1 px-4 py-2 border-b border-slate-800">
                 {["Batter","R","B","4s","Pts"].map((h) => (
                   <span key={h} className="text-[9px] text-slate-600 font-black uppercase text-right first:text-left">{h}</span>
@@ -252,6 +253,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
                   <span className="text-brand text-sm text-right self-center font-black tabular-nums">{s.fantasy_points ?? 0}</span>
                 </div>
               ))}
+              </div></div>{/* /overflow-x-auto batting */}
             </div>
           )}
 
@@ -261,6 +263,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
                 <div className="w-2 h-2 rounded-full" style={{ background: awayColor }} />
                 <p className="text-white text-xs font-black uppercase tracking-wider">Bowling</p>
               </div>
+              <div className="overflow-x-auto"><div style={{minWidth:"280px"}}>
               <div className="grid grid-cols-[1fr_36px_36px_36px_48px] gap-1 px-4 py-2 border-b border-slate-800">
                 {["Bowler","Ov","W","R","Pts"].map((h) => (
                   <span key={h} className="text-[9px] text-slate-600 font-black uppercase text-right first:text-left">{h}</span>
@@ -278,6 +281,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
                   <span className="text-brand text-sm text-right self-center font-black tabular-nums">{s.fantasy_points ?? 0}</span>
                 </div>
               ))}
+              </div></div>{/* /overflow-x-auto bowling */}
             </div>
           )}
 
