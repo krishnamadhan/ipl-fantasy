@@ -33,7 +33,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     return NextResponse.json({ error: "RAPIDAPI_KEY not set" }, { status: 500 });
   }
 
-  const service = await createServiceClient();
+  const service = createServiceClient();
   const { data: match } = await service
     .from("f11_matches")
     .select("cricapi_match_id, status")

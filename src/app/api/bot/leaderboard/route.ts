@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   if (!match_id) return NextResponse.json({ error: "match_id required" }, { status: 400 });
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   // Find the admin-created group contest (created_by IS NULL) for this match
   const { data: matchRow } = await admin

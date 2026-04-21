@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   if (!match_id) return NextResponse.json({ error: "match_id required" }, { status: 400 });
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   let query = admin
     .from("f11_player_stats")

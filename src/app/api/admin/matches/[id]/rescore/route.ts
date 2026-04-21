@@ -10,7 +10,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const service = await createServiceClient();
+  const service = createServiceClient();
   const { data: profile } = await service.from("f11_profiles").select("is_admin").eq("id", user.id).single();
   if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 

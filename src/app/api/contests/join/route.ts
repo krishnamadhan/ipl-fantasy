@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "contest_id and team_id required" }, { status: 400 });
   }
 
-  const service = await createServiceClient();
+  const service = createServiceClient();
 
   // Verify team belongs to user
   const { data: team } = await service

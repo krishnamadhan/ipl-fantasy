@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "RAPIDAPI_KEY not configured" }, { status: 500 });
   }
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   try {
     const { data: setting } = await admin

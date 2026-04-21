@@ -4,7 +4,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 export async function GET(_: NextRequest, { params }: { params: Promise<{ matchId: string }> }) {
   const { matchId } = await params;
   const supabase = await createClient();
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   const { data, error } = await supabase
     .from("f11_contests")

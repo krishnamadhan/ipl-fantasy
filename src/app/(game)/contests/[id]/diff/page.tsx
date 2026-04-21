@@ -103,7 +103,7 @@ export default async function TeamDiffPage({ params, searchParams }: PageProps) 
   const { u1, u2 } = await searchParams;
 
   const supabase = await createClient();
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");

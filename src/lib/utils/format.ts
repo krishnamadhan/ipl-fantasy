@@ -54,7 +54,9 @@ export function timeUntil(dateStr: string): string {
 }
 
 export function shortTeam(name: string | null | undefined): string {
-  if (!name) return "TBD";
+
+
+  if (!name) return "???";
   const map: Record<string, string> = {
     "Mumbai Indians": "MI",
     "Chennai Super Kings": "CSK",

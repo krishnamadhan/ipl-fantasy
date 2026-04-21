@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "entry_id and new_team_id required" }, { status: 400 });
   }
 
-  const service = await createServiceClient();
+  const service = createServiceClient();
 
   // Fetch the existing entry — must belong to this user
   const { data: entry } = await service

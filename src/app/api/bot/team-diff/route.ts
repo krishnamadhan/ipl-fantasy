@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 
   if (!match_id) return NextResponse.json({ error: "match_id required" }, { status: 400 });
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   // ── Find the group contest ──────────────────────────────────────────────────
   const { data: contest } = await admin

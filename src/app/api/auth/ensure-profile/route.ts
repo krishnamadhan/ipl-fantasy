@@ -11,7 +11,7 @@ export async function POST(_req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   // Check if profile exists
   const { data: existing } = await admin

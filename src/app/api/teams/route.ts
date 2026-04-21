@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Fetch players + match for validation
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
   const [playersRes, matchRes] = await Promise.all([
     admin.from("f11_players").select("id, role, ipl_team, credit_value").in("id", player_ids),
     admin.from("f11_matches").select("status, team_home, team_away").eq("id", match_id).single(),

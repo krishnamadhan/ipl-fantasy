@@ -18,7 +18,7 @@ export default async function AdminMatchDetailPage({
   const { data: profile } = await supabase.from("f11_profiles").select("is_admin").eq("id", user.id).single();
   if (!profile?.is_admin) redirect("/dashboard");
 
-  const service = await createServiceClient();
+  const service = createServiceClient();
 
   const [matchRes, statsRes, contestsRes, playingXiRes] = await Promise.all([
     service.from("f11_matches").select("*").eq("id", id).single(),

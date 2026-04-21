@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const match_id = searchParams.get("match_id");
   if (!match_id) return NextResponse.json({ error: "match_id required" }, { status: 400 });
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   // Bot-created contests: created_by is null, contest_type private
   const { data: contest } = await admin
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   const { match_id, group_name = "WhatsApp Group" } = await req.json();
   if (!match_id) return NextResponse.json({ error: "match_id required" }, { status: 400 });
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   // Idempotency check
   const { data: existing } = await admin

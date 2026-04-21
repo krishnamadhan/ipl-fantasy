@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  const service = await createServiceClient();
+  const service = createServiceClient();
 
   const fn = type === "credit" ? "f11_credit_wallet" : "f11_deduct_wallet";
   const { error } = await service.rpc(fn, {

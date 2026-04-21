@@ -4,7 +4,7 @@ import { calcPrizeTiers } from "@/lib/utils/prize-calc";
 
 export async function POST(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const service = await createServiceClient();
+  const service = createServiceClient();
 
   const { data: contest } = await service
     .from("f11_contests")

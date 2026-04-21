@@ -38,7 +38,7 @@ export default async function BrowseContestsPage({ params }: { params: Promise<{
   const contestIds = rawContests.map((c: any) => c.id);
   const entryCounts: Record<string, number> = {};
   if (contestIds.length > 0) {
-    const admin = await createServiceClient();
+    const admin = createServiceClient();
     const { data: entryRows } = await admin
       .from("f11_entries")
       .select("contest_id")

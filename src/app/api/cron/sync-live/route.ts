@@ -272,7 +272,7 @@ export async function GET(req: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const adminClient = await createServiceClient();
+    const adminClient = createServiceClient();
     const { data: profile } = await adminClient
       .from("f11_profiles")
       .select("is_admin")
@@ -292,7 +292,7 @@ export async function GET(req: NextRequest) {
   // if there are actual live matches (handles rain delays past midnight).
   const inWindow = utcMinutes >= 10 * 60 && utcMinutes <= 19 * 60 + 30;
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   // 1. Get all live matches that aren't paused
   const { data: liveMatches } = await admin

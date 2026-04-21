@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency, shortTeam, TEAM_COLORS } from "@/lib/utils/format";
@@ -37,72 +37,89 @@ export default async function DashboardPage() {
   const firstName    = (profile?.display_name ?? profile?.username ?? "Player").split(" ")[0];
 
   // Extra data for hero card + active entries + leaderboard preview
-  let heroContestCount = 0;
-  let heroTotalPrize   = 0;
-  let hasTeam          = false;
-  let activeEntries: any[] = [];
-  let top5: { userId: string; totalPoints: number; totalWinnings: number }[] = [];
-  let lbSorted: { userId: string; totalPoints: number; totalWinnings: number }[] = [];
-  let lbProfileMap = new Map<string, any>();
+  const [heroContestsRes, heroTeamRes, myEntriesRes, lbEntriesRes] = await Promise.all([
+    nextMatch
+      ? supabase.from("f11_contests").select("id, prize_pool").eq("match_id", nextMatch.id).in("status", ["open", "locked"])
+      : Promise.resolve({ data: [] as any[] }),
+    nextMatch
+      ? supabase.from("f11_teams").select("id").eq("match_id", nextMatch.id).eq("user_id", user.id).limit(1)
+      : Promise.resolve({ data: [] as any[] }),
+    supabase
+      .from("f11_entries")
+      .select("id, total_points, rank, contest_id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10)
+      .then(async (r) => {
+        if (r.error || !r.data?.length) return r;
+        // Fetch contest+match info separately to avoid nested join issues
+        const contestIds = [...new Set(r.data.map((e: any) => e.contest_id))];
+        const admin = createServiceClient();
+        const { data: contests } = await admin
+          .from("f11_contests")
+          .select("id, name, status, prize_pool, match:f11_matches!match_id(id, team_home, team_away)")
+          .in("id", contestIds);
+        const contestMap = Object.fromEntries((contests ?? []).map((c: any) => [c.id, c]));
+        return { data: r.data.map((e: any) => ({ ...e, contest: contestMap[e.contest_id] ?? null })) };
+      }),
+    // Leaderboard: aggregate completed entries per user
+    supabase
+      .from("f11_entries")
+      .select("user_id, total_points, prize_won, contest_id")
+      .limit(500)
+      .then(async (r) => {
+        if (r.error || !r.data?.length) return { data: [] as any[] };
+        // Filter to completed contests only
+        const contestIds = [...new Set(r.data.map((e: any) => e.contest_id))];
+        const admin = createServiceClient();
+        const { data: contests } = await admin
+          .from("f11_contests")
+          .select("id, status")
+          .in("id", contestIds)
+          .eq("status", "completed");
+        const completedIds = new Set((contests ?? []).map((c: any) => c.id));
+        return { data: r.data.filter((e: any) => completedIds.has(e.contest_id)) };
+      }),
+  ]);
 
-  try {
-    const [heroContestsRes, heroTeamRes, myEntriesRes, lbEntriesRes] = await Promise.all([
-      nextMatch
-        ? supabase.from("f11_contests").select("id, prize_pool").eq("match_id", nextMatch.id).in("status", ["open", "locked"])
-        : Promise.resolve({ data: [] as any[], error: null }),
-      nextMatch
-        ? (supabase as any).from("f11_entries").select("id, f11_contests!inner(match_id)").eq("user_id", user.id).eq("f11_contests.match_id", nextMatch.id).limit(1)
-        : Promise.resolve({ data: [] as any[], error: null }),
-      (supabase as any)
-        .from("f11_entries")
-        .select("id, total_points, rank, contest_id, f11_contests(id, name, status, prize_pool, match_id, f11_matches(id, team_home, team_away))")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(10),
-      supabase
-        .from("f11_entries")
-        .select("user_id, total_points, prize_won")
-        .limit(500),
-    ]);
+  const heroContests     = (heroContestsRes as any).data ?? [];
+  const heroTeam         = (heroTeamRes as any).data ?? [];
+  const allEntries       = ((myEntriesRes as any).data ?? []) as any[];
+  const activeEntries    = allEntries.filter(
+    (e: any) => e.contest && ["open", "locked", "live"].includes(e.contest.status)
+  );
+  const heroContestCount = heroContests.length;
+  const heroTotalPrize   = heroContests.reduce((s: number, c: any) => s + (c.prize_pool ?? 0), 0);
+  const hasTeam          = heroTeam.length > 0;
 
-    const heroContests = (heroContestsRes.data ?? []) as any[];
-    heroContestCount = heroContests.length;
-    heroTotalPrize   = heroContests.reduce((s: number, c: any) => s + (c.prize_pool ?? 0), 0);
-    hasTeam          = (heroTeamRes.data ?? []).length > 0;
-
-    const allEntries = (myEntriesRes.data ?? []) as any[];
-    activeEntries = allEntries.filter(
-      (e: any) => e.f11_contests && ["open", "locked", "live"].includes(e.f11_contests.status)
-    );
-
-    const lbRows = (lbEntriesRes.data ?? []) as any[];
-    const lbMap  = new Map<string, { userId: string; totalPoints: number; totalWinnings: number }>();
-    for (const row of lbRows) {
-      if (!row.user_id) continue;
-      const prev = lbMap.get(row.user_id) ?? { userId: row.user_id, totalPoints: 0, totalWinnings: 0 };
-      lbMap.set(row.user_id, {
-        ...prev,
-        totalPoints:    prev.totalPoints + (row.total_points ?? 0),
-        totalWinnings:  prev.totalWinnings + (row.prize_won ?? 0),
-      });
-    }
-    lbSorted = Array.from(lbMap.values())
-      .sort((a, b) => b.totalPoints - a.totalPoints || b.totalWinnings - a.totalWinnings);
-    top5 = lbSorted.slice(0, 5);
-    const myLbIdx = lbSorted.findIndex((r) => r.userId === user.id);
-    if (myLbIdx >= 5) {
-      const myRow = lbSorted[myLbIdx];
-      if (myRow) top5.push(myRow);
-    }
-
-    const lbUserIds = [...new Set(top5.map((r) => r.userId).filter(Boolean))];
-    const { data: lbProfiles } = lbUserIds.length
-      ? await supabase.from("f11_profiles").select("id, username, display_name").in("id", lbUserIds)
-      : { data: [] as any[] };
-    lbProfileMap = new Map((lbProfiles ?? []).map((p: any) => [p.id, p]));
-  } catch (err) {
-    console.error("[dashboard] secondary queries failed:", err);
+  // Aggregate leaderboard in JS — top 5 + current user
+  const lbRows = (lbEntriesRes as any).data ?? [];
+  const lbMap  = new Map<string, { userId: string; totalPoints: number; totalWinnings: number }>();
+  for (const row of lbRows) {
+    if (!row.user_id) continue;
+    const prev = lbMap.get(row.user_id) ?? { userId: row.user_id, totalPoints: 0, totalWinnings: 0 };
+    lbMap.set(row.user_id, {
+      ...prev,
+      totalPoints:    prev.totalPoints + (row.total_points ?? 0),
+      totalWinnings:  prev.totalWinnings + (row.prize_won ?? 0),
+    });
   }
+  const lbSorted = Array.from(lbMap.values())
+    .sort((a, b) => b.totalPoints - a.totalPoints || b.totalWinnings - a.totalWinnings);
+  const top5    = lbSorted.slice(0, 5);
+  const myLbIdx = lbSorted.findIndex((r) => r.userId === user.id);
+  // If current user is outside top 5, append them
+  if (myLbIdx >= 5) {
+    const myRow = lbSorted[myLbIdx];
+    if (myRow) top5.push(myRow);
+  }
+
+  // Fetch profile names for leaderboard users
+  const lbUserIds = [...new Set(top5.map((r) => r.userId).filter(Boolean))];
+  const { data: lbProfiles } = lbUserIds.length
+    ? await supabase.from("f11_profiles").select("id, username, display_name").in("id", lbUserIds)
+    : { data: [] };
+  const lbProfileMap = new Map((lbProfiles ?? []).map((p: any) => [p.id, p]));
 
   return (
     <div className="max-w-lg mx-auto pb-24" style={{ background: "#0B0E14", minHeight: "100vh" }}>
@@ -187,8 +204,8 @@ export default async function DashboardPage() {
           {/* Horizontal scroll strip */}
           <div className="flex gap-3 px-4 overflow-x-auto no-scrollbar pb-1">
             {activeEntries.map((e: any) => {
-              const c = e.f11_contests;
-              const m = Array.isArray(c?.f11_matches) ? c.f11_matches[0] : c?.f11_matches;
+              const c = e.contest;
+              const m = Array.isArray(c?.match) ? c.match[0] : c?.match;
               const rank = e.rank as number | null;
               const pts  = e.total_points ?? 0;
 

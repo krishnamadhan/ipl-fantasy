@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid contest type" }, { status: 400 });
   }
 
-  const service = await createServiceClient();
+  const service = createServiceClient();
 
   // Verify match exists and is open for contest creation
   const { data: match } = await service

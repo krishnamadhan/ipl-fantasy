@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const username = searchParams.get("username");
   if (!username) return NextResponse.json({ error: "username required" }, { status: 400 });
 
-  const service = await createServiceClient();
+  const service = createServiceClient();
   const { data } = await service
     .from("f11_profiles")
     .select("id, username, display_name, wallet_balance")

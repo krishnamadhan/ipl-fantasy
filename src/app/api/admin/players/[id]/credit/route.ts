@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
-  const service = await createServiceClient();
+  const service = createServiceClient();
 
   // Get current player
   const { data: player } = await service.from("f11_players").select("*").eq("id", id).single();

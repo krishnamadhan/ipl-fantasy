@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const match_id = searchParams.get("match_id");
   if (!match_id) return NextResponse.json({ error: "match_id required" }, { status: 400 });
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   const { data: match } = await admin
     .from("f11_matches")

@@ -10,7 +10,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
   const { data: profile } = await supabase.from("f11_profiles").select("is_admin").eq("id", user.id).single();
   if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const service = await createServiceClient();
+  const service = createServiceClient();
 
   const { data: match } = await service.from("f11_matches").select("status").eq("id", id).single();
   if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });

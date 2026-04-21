@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   const { match_id, action = "lock" } = await req.json();
   if (!match_id) return NextResponse.json({ error: "match_id required" }, { status: 400 });
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   if (action === "go_live") {
     const { error } = await admin

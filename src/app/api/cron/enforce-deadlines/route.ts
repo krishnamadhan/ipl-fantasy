@@ -54,12 +54,12 @@ export async function GET(req: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const { data: profile } = await (await createServiceClient())
+    const { data: profile } = await (createServiceClient())
       .from("f11_profiles").select("is_admin").eq("id", user.id).single();
     if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
   const now = new Date().toISOString();
   const nowMs = Date.now();
   const in24h = new Date(nowMs + 24 * 60 * 60 * 1000).toISOString();

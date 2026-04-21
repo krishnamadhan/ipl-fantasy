@@ -18,7 +18,7 @@ export default async function TeamBuilderPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
 
   const [matchRes, playersRes, teamCountRes, matchPlayersRes, lastStatsRes] = await Promise.all([
     admin.from("f11_matches").select("*").eq("id", matchId).single(),

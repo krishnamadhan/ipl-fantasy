@@ -24,7 +24,7 @@ export async function POST(_: NextRequest) {
     .single();
   if (!profile?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const service = await createServiceClient();
+  const service = createServiceClient();
 
   // Find all bot-created contests with prize_pool = 0
   const { data: botContests } = await service

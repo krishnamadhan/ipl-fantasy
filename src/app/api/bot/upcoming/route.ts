@@ -10,7 +10,7 @@ import { botAuth, unauthorized } from "../_lib/auth";
 export async function GET(req: NextRequest) {
   if (!botAuth(req)) return unauthorized();
 
-  const admin = await createServiceClient();
+  const admin = createServiceClient();
   const now = new Date().toISOString();
   const in48h = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
   // Also include matches that started within the last 4h — covers bot restarts mid-match
