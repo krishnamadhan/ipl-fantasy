@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
         : "Contest is full now 🔥";
 
       const message =
-        `🎉 *${displayName}* joined *${matchLabel}*${teamLabel}!\n` +
+        `🎉 *${displayName}* joined *${contest.name}* (${matchLabel})${teamLabel}!\n` +
         `👥 ${entryCount}/${contest.max_teams} players in\n` +
         `${spotsLine}\n` +
         `▶️ ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ipl11.vercel.app"}`;
