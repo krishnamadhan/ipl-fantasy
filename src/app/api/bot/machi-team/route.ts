@@ -79,15 +79,19 @@ async function pickTeamWithClaude(
     return b.credit_value - a.credit_value;
   });
 
+  // Use numeric keys so Claude doesn't confuse names with IDs
+  const idMap: Record<string, string> = {}; // "P1" → uuid
   const playerList = sorted.map((p, i) => {
+    const key = `P${i + 1}`;
+    idMap[key] = p.id;
     const xi = p.is_playing_xi ? " ✅PLAYING" : "";
     const pts = p.season_points > 0 ? ` ${p.season_points}pts` : "";
-    return `${i + 1}. ${p.id} | ${p.name} | ${p.role} | ${p.ipl_team} | ${p.credit_value}cr${xi}${pts}`;
+    return `${key}: ${p.name} | ${p.role} | ${p.ipl_team} | ${p.credit_value}cr${xi}${pts}`;
   }).join("\n");
 
   const prompt = `You are a Dream11 IPL fantasy expert. Pick the best 11 for: ${matchTeams.home} vs ${matchTeams.away}
 
-PLAYERS (ID | Name | Role | Team | Credits | XI? | SeasonPts):
+PLAYERS (Key: Name | Role | Team | Credits | XI? | SeasonPts):
 ${playerList}
 
 RULES:
@@ -103,8 +107,8 @@ STRATEGY:
 - Captain: best explosive bat or proven AR
 - VC: different team from captain if possible
 
-Respond ONLY with this JSON (no other text):
-{"player_ids":["id1","id2","id3","id4","id5","id6","id7","id8","id9","id10","id11"],"captain_id":"id","vc_id":"id","reasoning":"one sentence"}`;
+Use the KEY (P1, P2, etc.) not player names. Respond ONLY with this JSON:
+{"player_ids":["P1","P5","P7","P9","P12","P14","P16","P18","P20","P21","P22"],"captain_id":"P7","vc_id":"P12","reasoning":"one sentence"}`;
 
   try {
     const response = await client.messages.create({
@@ -123,16 +127,19 @@ Respond ONLY with this JSON (no other text):
     if (!json.captain_id || !json.vc_id)
       throw new Error("Missing captain_id or vc_id");
 
-    const validIds = new Set(players.map((p) => p.id));
-    const badIds = json.player_ids.filter((id: string) => !validIds.has(id));
-    if (badIds.length) throw new Error(`Invalid player IDs: ${badIds.slice(0, 3).join(", ")}`);
-    if (!validIds.has(json.captain_id)) throw new Error(`Invalid captain: ${json.captain_id}`);
-    if (!validIds.has(json.vc_id)) throw new Error(`Invalid vc: ${json.vc_id}`);
+    // Map P-keys → UUIDs
+    const resolvedIds = json.player_ids.map((k: string) => idMap[k]).filter(Boolean);
+    const captainId = idMap[json.captain_id];
+    const vcId = idMap[json.vc_id];
+
+    if (resolvedIds.length !== 11) throw new Error(`Could not resolve all player keys: ${json.player_ids}`);
+    if (!captainId) throw new Error(`Invalid captain key: ${json.captain_id}`);
+    if (!vcId) throw new Error(`Invalid vc key: ${json.vc_id}`);
 
     return {
-      player_ids: json.player_ids,
-      captain_id: json.captain_id,
-      vc_id: json.vc_id,
+      player_ids: resolvedIds,
+      captain_id: captainId,
+      vc_id: vcId,
       reasoning: json.reasoning ?? "AI-selected team",
     };
   } catch (e: any) {
