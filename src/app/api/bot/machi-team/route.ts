@@ -114,18 +114,20 @@ Respond ONLY with this JSON (no other text):
     });
 
     const text = response.content[0]?.type === "text" ? response.content[0].text.trim() : "";
-    // Extract JSON even if Claude wraps it in backticks
     const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return null;
+    if (!match) throw new Error(`No JSON in response: ${text.slice(0, 100)}`);
 
     const json = JSON.parse(match[0]);
-    if (!Array.isArray(json.player_ids) || json.player_ids.length !== 11) return null;
-    if (!json.captain_id || !json.vc_id) return null;
+    if (!Array.isArray(json.player_ids) || json.player_ids.length !== 11)
+      throw new Error(`Bad player_ids: ${JSON.stringify(json.player_ids)?.slice(0, 80)}`);
+    if (!json.captain_id || !json.vc_id)
+      throw new Error("Missing captain_id or vc_id");
 
-    // Verify all IDs are valid
     const validIds = new Set(players.map((p) => p.id));
-    if (!json.player_ids.every((id: string) => validIds.has(id))) return null;
-    if (!validIds.has(json.captain_id) || !validIds.has(json.vc_id)) return null;
+    const badIds = json.player_ids.filter((id: string) => !validIds.has(id));
+    if (badIds.length) throw new Error(`Invalid player IDs: ${badIds.slice(0, 3).join(", ")}`);
+    if (!validIds.has(json.captain_id)) throw new Error(`Invalid captain: ${json.captain_id}`);
+    if (!validIds.has(json.vc_id)) throw new Error(`Invalid vc: ${json.vc_id}`);
 
     return {
       player_ids: json.player_ids,
@@ -133,7 +135,8 @@ Respond ONLY with this JSON (no other text):
       vc_id: json.vc_id,
       reasoning: json.reasoning ?? "AI-selected team",
     };
-  } catch {
+  } catch (e: any) {
+    console.error("[machi-team] pickTeam failed:", e?.message);
     return null;
   }
 }
@@ -193,9 +196,8 @@ export async function POST(req: NextRequest) {
 
   const pick = await pickTeamWithClaude(players, { home: match.team_home, away: match.team_away });
   if (!pick)
-    return NextResponse.json({ error: "Claude failed to pick a valid team" }, { status: 500 });
+    return NextResponse.json({ error: "Claude failed — check Vercel logs" }, { status: 500 });
 
-  // Validate against Dream11 rules
   const selectedPlayers = players.filter((p) => pick.player_ids.includes(p.id));
   const validation = validateTeam(selectedPlayers as any, pick.captain_id, pick.vc_id, {
     home: match.team_home,
