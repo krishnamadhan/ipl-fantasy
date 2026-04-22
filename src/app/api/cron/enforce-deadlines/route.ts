@@ -118,26 +118,43 @@ export async function GET(req: NextRequest) {
       const data = await cbGet(`/mcenter/v1/${m.cricapi_match_id}`);
       if (!data) continue;
 
-      const mi = data.matchInfo ?? data.matchHeader ?? data;
-      const tossWinner = mi.tossResults?.tossWinnerName ?? null;
+      // Cricbuzz returns toss info at root level as:
+      //   tossstatus: "Lucknow Super Giants opt to bowl"
+      // NOT in matchInfo.tossResults (that path is always null in practice)
+      const tossstatus: string = data.tossstatus ?? data.tossStatus ?? "";
+      const tossMatch = tossstatus.match(/^(.+?)\s+opt to\s+(bat|bowl)/i);
 
-      if (tossWinner) {
-        const batting_first = mi.tossResults?.decision?.toLowerCase()?.includes("bat")
-          ? tossWinner
-          : null;
+      if (tossMatch) {
+        const tossWinner = tossMatch[1].trim();
+        const decision = tossMatch[2].toLowerCase(); // "bat" or "bowl"
+
+        // Determine which team bats first
+        let batting_first: string | null = null;
+        if (decision === "bat") {
+          batting_first = tossWinner;
+        } else {
+          // Toss winner bowls — find the other team by matching against DB team names
+          const t1 = data.team1?.teamname ?? data.team1?.name ?? m.team_home;
+          const t2 = data.team2?.teamname ?? data.team2?.name ?? m.team_away;
+          const winnerLower = tossWinner.toLowerCase();
+          // Pick the team that does NOT match the toss winner
+          const t1Words = t1.toLowerCase().split(" ").filter((w: string) => w.length > 3);
+          const t1IsWinner = t1Words.some((w: string) => winnerLower.includes(w));
+          batting_first = t1IsWinner ? t2 : t1;
+        }
 
         const { error } = await admin
           .from("f11_matches")
           .update({
             toss_winner: tossWinner,
-            ...(batting_first ? { batting_first } : {}),
+            batting_first,
             toss_detected_at: new Date().toISOString(),
           })
           .eq("id", m.id)
           .is("toss_winner", null); // guard: only set once
 
         if (!error) {
-          tossDetected.push(`${m.team_home} vs ${m.team_away} → ${tossWinner}`);
+          tossDetected.push(`${m.team_home} vs ${m.team_away} → ${tossWinner} (${decision}; bats: ${batting_first})`);
         } else {
           errors.push(`toss-update ${m.id}: ${error.message}`);
         }
