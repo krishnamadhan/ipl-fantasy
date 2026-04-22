@@ -137,7 +137,7 @@ Respond ONLY with this JSON (no other text):
     };
   } catch (e: any) {
     console.error("[machi-team] pickTeam failed:", e?.message);
-    return null;
+    throw e; // surface to caller
   }
 }
 
@@ -194,7 +194,12 @@ export async function POST(req: NextRequest) {
   if (players.length < 11)
     return NextResponse.json({ error: `Not enough players synced (${players.length})` }, { status: 422 });
 
-  const pick = await pickTeamWithClaude(players, { home: match.team_home, away: match.team_away });
+  let pick;
+  try {
+    pick = await pickTeamWithClaude(players, { home: match.team_home, away: match.team_away });
+  } catch (e: any) {
+    return NextResponse.json({ error: `Claude error: ${e?.message ?? e}` }, { status: 500 });
+  }
   if (!pick)
     return NextResponse.json({ error: "Claude failed — check Vercel logs" }, { status: 500 });
 
