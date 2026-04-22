@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { calcPrizeTiers } from "@/lib/utils/prize-calc";
+import { finalizeMatch } from "@/lib/fantasy/finalize-match";
 
 // Finalizes a match: in_review → completed + auto-pays all contest winners
 export async function POST(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -22,139 +22,9 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     }, { status: 400 });
   }
 
-  // Mark match completed
-  const { error: matchErr } = await service
-    .from("f11_matches")
-    .update({ status: "completed" })
-    .eq("id", id);
-  if (matchErr) return NextResponse.json({ error: matchErr.message }, { status: 500 });
-
-  // Mark all locked contests completed
-  await service
-    .from("f11_contests")
-    .update({ status: "completed" })
-    .eq("match_id", id)
-    .eq("status", "locked");
-
-  // Auto-payout: process each completed contest for this match
-  const { data: contests } = await service
-    .from("f11_contests")
-    .select("id, name, prize_pool, prize_pool_type, winner_paid_at")
-    .eq("match_id", id)
-    .eq("status", "completed");
-
-  const payoutResults: { contestId: string; ok: boolean; paid?: number; error?: string; creditErrors?: string[] }[] = [];
-
-  for (const contest of contests ?? []) {
-    // Skip if already paid (idempotency guard)
-    if (contest.winner_paid_at) {
-      payoutResults.push({ contestId: contest.id, ok: true, paid: 0 });
-      continue;
-    }
-
-    try {
-      const { data: entries } = await service
-        .from("f11_entries")
-        .select("id, user_id, rank, total_points")
-        .eq("contest_id", contest.id)
-        .order("total_points", { ascending: false });
-
-      if (!entries?.length) {
-        payoutResults.push({ contestId: contest.id, ok: true, paid: 0 });
-        continue;
-      }
-
-      // Ensure ranks are fresh before paying out
-      await service.rpc("f11_update_leaderboard", { p_match_id: id });
-
-      // Re-fetch entries with updated ranks
-      const { data: rankedEntries } = await service
-        .from("f11_entries")
-        .select("id, user_id, rank, total_points")
-        .eq("contest_id", contest.id)
-        .order("total_points", { ascending: false });
-
-      const finalEntries = rankedEntries ?? entries;
-
-      // Safety guard: if prize_pool is 0 but users paid entry fees, refund them.
-      // This handles bot-created contests that were misconfigured (entry_fee > 0, prize_pool = 0).
-      if (contest.prize_pool <= 0) {
-        const { data: paidEntries } = await service
-          .from("f11_entries")
-          .select("id, user_id, entry_fee_paid")
-          .eq("contest_id", contest.id)
-          .gt("entry_fee_paid", 0);
-
-        const refundErrors: string[] = [];
-        let totalRefunded = 0;
-
-        for (const pe of paidEntries ?? []) {
-          const { error: refErr } = await service.rpc("f11_credit_wallet", {
-            p_user_id: pe.user_id,
-            p_amount: pe.entry_fee_paid,
-            p_reason: `Refund: ${contest.name} (no prize pool configured)`,
-            p_reference_id: contest.id,
-          });
-          if (refErr) {
-            refundErrors.push(`user ${pe.user_id}: ${refErr.message}`);
-          } else {
-            totalRefunded += pe.entry_fee_paid;
-          }
-        }
-
-        if (refundErrors.length === 0) {
-          await service.from("f11_contests").update({ winner_paid_at: new Date().toISOString() }).eq("id", contest.id);
-          payoutResults.push({ contestId: contest.id, ok: true, paid: 0, creditErrors: totalRefunded > 0 ? [`Refunded ₹${totalRefunded} to ${paidEntries?.length} user(s)`] : [] });
-        } else {
-          payoutResults.push({ contestId: contest.id, ok: false, paid: 0, creditErrors: refundErrors });
-        }
-        continue;
-      }
-
-      const tiers = calcPrizeTiers(contest.prize_pool, contest.prize_pool_type, finalEntries.length);
-      let totalPaid = 0;
-      const creditErrors: string[] = [];
-
-      for (const entry of finalEntries) {
-        const rank = entry.rank ?? (finalEntries.findIndex((e) => e.id === entry.id) + 1);
-        const tier = tiers.find((t) => rank >= t.minRank && rank <= t.maxRank);
-        if (!tier || tier.perPlayerAmount <= 0) continue;
-
-        const { error: creditErr } = await service.rpc("f11_credit_wallet", {
-          p_user_id: entry.user_id,
-          p_amount: tier.perPlayerAmount,
-          p_reason: `Prize: ${contest.name}`,
-          p_reference_id: contest.id,
-        });
-        if (!creditErr) {
-          await service.from("f11_entries").update({ prize_won: tier.perPlayerAmount }).eq("id", entry.id);
-          totalPaid += tier.perPlayerAmount;
-        } else {
-          creditErrors.push(`user ${entry.user_id} rank ${rank}: ${creditErr.message}`);
-        }
-      }
-
-      // Only stamp winner_paid_at if no credit errors — allows admin to retry on failure
-      if (creditErrors.length === 0) {
-        await service
-          .from("f11_contests")
-          .update({ winner_paid_at: new Date().toISOString() })
-          .eq("id", contest.id);
-        payoutResults.push({ contestId: contest.id, ok: true, paid: totalPaid });
-      } else {
-        payoutResults.push({ contestId: contest.id, ok: false, paid: totalPaid, creditErrors });
-      }
-    } catch (err: any) {
-      payoutResults.push({ contestId: contest.id, ok: false, error: err.message });
-    }
+  const result = await finalizeMatch(id, service);
+  if (!result.ok && result.payouts[0]?.error) {
+    return NextResponse.json({ error: result.payouts[0].error }, { status: 500 });
   }
-
-  // Update season leaderboard — aggregate total_points per user across all completed matches
-  try {
-    await service.rpc("f11_update_season_leaderboard");
-  } catch {
-    // Non-fatal — season leaderboard update is best-effort
-  }
-
-  return NextResponse.json({ ok: true, payouts: payoutResults });
+  return NextResponse.json({ ok: true, payouts: result.payouts });
 }

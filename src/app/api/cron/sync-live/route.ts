@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { calcFantasyPoints } from "@/lib/fantasy/scoring";
 import { parseDismissal } from "@/lib/fantasy/dismissal-parser";
+import { finalizeMatch } from "@/lib/fantasy/finalize-match";
 
 const CB_HOST = "cricbuzz-cricket.p.rapidapi.com";
 
@@ -443,18 +444,26 @@ export async function GET(req: NextRequest) {
       // 7. Recalculate leaderboard
       await admin.rpc("f11_update_leaderboard", { p_match_id: match.id });
 
-      // 8. Move to in_review if match ended (admin will verify + finalize)
+      // 8. Auto-finalize when match ends — saves result, pays out prizes, updates season leaderboard
       if (matchComplete) {
         const resultText = liveScore?.situation ||
           (data.status ?? data.matchHeader?.statusText ?? "Match complete");
-        await admin.from("f11_matches")
+        // Set result_summary + in_review first (guard against concurrent runs)
+        const { data: updated } = await admin.from("f11_matches")
           .update({ status: "in_review", result_summary: resultText })
           .eq("id", match.id)
-          .eq("status", "live"); // guard: don't overwrite if already in_review
-        // Do NOT complete contests yet — admin must click Finalize
+          .eq("status", "live")
+          .select("id");
+        // Only finalize if this run was the one that flipped to in_review
+        if (updated?.length) {
+          const finalizeResult = await finalizeMatch(match.id, admin);
+          results.push({ matchId: match.id, playersUpdated: upsertCount, matchComplete, finalized: finalizeResult.ok, payouts: finalizeResult.payouts });
+        } else {
+          results.push({ matchId: match.id, playersUpdated: upsertCount, matchComplete, finalized: false, note: "already in_review or completed" });
+        }
+      } else {
+        results.push({ matchId: match.id, playersUpdated: upsertCount, matchComplete });
       }
-
-      results.push({ matchId: match.id, playersUpdated: upsertCount, matchComplete });
     } catch (err: any) {
       results.push({ matchId: match.id, error: err.message });
     }
