@@ -247,6 +247,25 @@ Deno.serve(async () => {
           .upsert(stats, { onConflict: "match_id,player_id" });
       }
 
+      // Playing XI bonus: upsert +4 for confirmed XI players not yet in scorecard
+      const { data: xiRows } = await supabase
+        .from("f11_match_players")
+        .select("player_id")
+        .eq("match_id", match.id)
+        .eq("is_playing_xi", true);
+
+      for (const xi of xiRows ?? []) {
+        if (statsMap.has(xi.player_id)) continue;
+        await supabase.from("f11_player_stats").upsert(
+          { match_id: match.id, player_id: xi.player_id,
+            runs: 0, balls_faced: 0, fours: 0, sixes: 0, is_dismissed: false,
+            overs_bowled: 0, wickets: 0, runs_conceded: 0, maidens: 0,
+            catches: 0, stumpings: 0, run_outs: 0, run_outs_assist: 0,
+            fantasy_points: 4 },
+          { onConflict: "match_id,player_id" }
+        );
+      }
+
       // Bulk leaderboard update
       await supabase.rpc("f11_update_leaderboard", { p_match_id: match.id });
 
