@@ -204,7 +204,8 @@ export async function POST(req: NextRequest) {
   if (!validation.valid)
     return NextResponse.json({ error: `Invalid team: ${validation.errors[0]}` }, { status: 422 });
 
-  const { id: entry_id, error } = await upsertBotEntry(admin, contest_id, pick);
+  const { player_ids, captain_id, vc_id } = pick;
+  const { id: entry_id, error } = await upsertBotEntry(admin, contest_id, { player_ids, captain_id, vc_id });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const captain = players.find((p) => p.id === pick.captain_id);
@@ -268,7 +269,8 @@ export async function PUT(req: NextRequest) {
   if (!validation.valid)
     return NextResponse.json({ error: `Invalid team: ${validation.errors[0]}` }, { status: 422 });
 
-  const { id: entry_id, error } = await upsertBotEntry(admin, contest.id, pick);
+  const { player_ids: pi2, captain_id: ci2, vc_id: vi2 } = pick;
+  const { id: entry_id, error } = await upsertBotEntry(admin, contest.id, { player_ids: pi2, captain_id: ci2, vc_id: vi2 });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const captain = poolToUse.find((p) => p.id === pick.captain_id);
