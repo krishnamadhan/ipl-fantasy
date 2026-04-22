@@ -32,8 +32,9 @@ function calcPoints(s: any): number {
   // Century REPLACES half-century (not cumulative)
   if (s.runs >= 100) pts += 16;
   else if (s.runs >= 50) pts += 8;
-  if (s.runs === 0 && s.is_dismissed) pts -= 2; // duck penalty
-  if (s.balls_faced >= 10) {
+  // Duck: only WK/BAT/AR — BOWLers exempt (role not stored here, skip for BOWL via overs heuristic)
+  if (s.runs === 0 && s.is_dismissed && s.role !== "BOWL") pts -= 2;
+  if (s.balls_faced >= 10 && s.role !== "BOWL") {
     const sr = (s.runs / s.balls_faced) * 100;
     // TATA IPL: NO SR bonuses — only penalties
     if (sr < 50) pts -= 6;
@@ -44,7 +45,6 @@ function calcPoints(s: any): number {
   if (s.wickets >= 5) pts += 16;
   else if (s.wickets >= 4) pts += 8;
   else if (s.wickets >= 3) pts += 4;
-  // Note: no 3-catch bonus in TATA IPL
   pts += (s.maidens ?? 0) * 8;
   if (s.overs_bowled >= 2) {
     const decimalOvers = cricketOversToDecimal(s.overs_bowled);
@@ -53,7 +53,9 @@ function calcPoints(s: any): number {
     if (eco < 5) pts += 4;
     else if (eco <= 6) pts += 2;
   }
-  pts += (s.catches ?? 0) * 8;
+  const catches = s.catches ?? 0;
+  pts += catches * 8;
+  if (catches >= 3) pts += 4; // 3-catch bonus
   pts += (s.stumpings ?? 0) * 12;
   pts += (s.run_outs ?? 0) * 12;        // direct run out
   pts += (s.run_outs_assist ?? 0) * 6;  // run out assist

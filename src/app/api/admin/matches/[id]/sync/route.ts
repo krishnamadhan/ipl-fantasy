@@ -79,9 +79,23 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     updates.status = mapStatus(stateStr, startMs ? Number(startMs) : undefined);
   }
 
-  if (mi.tossResults?.tossWinnerName) {
-    updates.toss_winner = mi.tossResults.tossWinnerName;
-    // Set toss_detected_at only if not already set (marks when toss was first seen)
+  // Toss: Cricbuzz returns tossstatus at root level: "Team opt to bat/bowl"
+  // mi.tossResults.tossWinnerName is always null in practice
+  const tossstatus: string = data.tossstatus ?? data.tossStatus ?? "";
+  const tossMatch = tossstatus.match(/^(.+?)\s+opt to\s+(bat|bowl)/i);
+  if (tossMatch) {
+    const tossWinner = tossMatch[1].trim();
+    const decision = tossMatch[2].toLowerCase();
+    updates.toss_winner = tossWinner;
+    if (decision === "bat") {
+      updates.batting_first = tossWinner;
+    } else {
+      const t1 = data.team1?.teamname ?? data.team1?.name ?? "";
+      const t2 = data.team2?.teamname ?? data.team2?.name ?? "";
+      const winnerLower = tossWinner.toLowerCase();
+      const t1Words = t1.toLowerCase().split(" ").filter((w: string) => w.length > 3);
+      updates.batting_first = t1Words.some((w: string) => winnerLower.includes(w)) ? t2 : t1;
+    }
     const { data: existing } = await service
       .from("f11_matches")
       .select("toss_detected_at")
