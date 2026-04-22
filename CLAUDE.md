@@ -1,6 +1,30 @@
 # IPL Fantasy — Claude Code Context
 
-This file is for future Claude Code sessions. It documents every technical decision, architecture choice, and known quirk so you can dive in without re-deriving context.
+This file is the single source of truth for all Claude sessions. FOLLOW THESE RULES EXACTLY — they encode hard-won decisions and must not be re-derived or overridden.
+
+---
+
+## CRITICAL RULES (read first, every session)
+
+1. **No Vercel crons** — `vercel.json` has `"crons": []`. The Pi runs all scheduling via PM2/node-cron calling the API endpoints. Never add crons to vercel.json.
+2. **Always use `createServiceClient()`** for any API route that reads data across users (contests, leaderboards, admin). `createClient()` uses RLS and will hide other users' data.
+3. **`createServiceClient()` is synchronous** — do NOT `await` it. It returns a client directly.
+4. **Supabase service role key format**: `sb_secret_...` (new format, NOT the old JWT format). Check `.env.local` or Vercel dashboard for the actual value.
+5. **PI runs BanterAgent** — all bot code lives at `/home/pi/banteragent/`. The Windows copy is stale. SSH to Pi to edit bot code.
+6. **Machi bot user ID**: `4247a49e-6b70-4cf1-af8c-d79590633a97` — Krish user ID: `5c7afae9-3a14-4123-a220-beacec887a90`
+7. **Never use Supabase Edge Functions for sync** — they have JWT issues on Hobby plan. Use Next.js API routes only.
+
+---
+
+## Cron Architecture (Pi-based, NOT Vercel)
+
+The Pi calls these endpoints every N minutes via node-cron in BanterAgent:
+- `POST /api/cron/enforce-deadlines` — every 5 min (match lifecycle: scheduled→open→locked→live→in_review)
+- `POST /api/cron/sync-live` — every 1 min during match hours
+
+Both endpoints accept `Authorization: Bearer <CRON_SECRET>` header. `CRON_SECRET=abc` in .env.local.
+
+---
 
 ---
 
@@ -262,19 +286,22 @@ After saves that redirect to another page, use `window.location.href` instead of
 **Custom domain**: ipl11.vercel.app
 
 ### Hobby Plan Limitations
-- Crons only support daily schedule (`0 0 * * *`) — no minute-level crons
-- This is why live sync runs via **Supabase Edge Function** cron instead
-- `vercel.json` has `"crons": []` — do not add minute-level crons
+- Crons only support daily schedule — no minute-level crons
+- `vercel.json` has `"crons": []` — DO NOT add crons here, ever
+- All scheduling is done by the Pi (BanterAgent PM2 process calling the API)
 
-### Required Environment Variables (set via `vercel env add` or dashboard)
+### Required Environment Variables (manage via `npx vercel env add` — CLI is authenticated)
 ```
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_SERVICE_ROLE_KEY   # sb_secret_... format (new). Check .env.local or Vercel dashboard
 RAPIDAPI_KEY
-CRON_SECRET          # optional, secures the /api/cron/sync-live endpoint
-BOT_GROUP_ID         # WhatsApp group JID — contest join notifications sent here
+CRON_SECRET          # "abc" — secures /api/cron/* endpoints
+NEXT_PUBLIC_APP_URL  # "https://ipl11.vercel.app" — used in cron for internal fetch URLs
+BOT_GROUP_ID         # WhatsApp group JID
 BOT_SECRET           # must match FANTASY_BOT_SECRET in banteragent/.env
+ANTHROPIC_API_KEY    # for Machi AI team selection (Claude Haiku)
+BOT_USER_ID          # "4247a49e-6b70-4cf1-af8c-d79590633a97" — Machi's user ID
 ```
 
 ---
