@@ -169,7 +169,7 @@ export async function GET(req: NextRequest) {
     if ((count ?? 0) > 0) continue; // already synced
 
     try {
-      const origin = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000";
+      const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://ipl11.vercel.app";
       const res = await fetch(`${origin}/api/admin/matches/${m.id}/sync-playing-xi`, {
         method: "POST",
         headers: { "x-internal-cron": process.env.CRON_SECRET ?? "internal" },
@@ -210,7 +210,31 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── 5. FORGOTTEN-LOCK: scheduled matches already past start ──────────────
+  // ── 5. AUTO-LIVE: locked matches past start + toss confirmed → live ──────
+  // Admin was previously required to click "Go Live". Now cron handles it.
+  const madeLive: string[] = [];
+  const { data: toGoLive } = await admin
+    .from("f11_matches")
+    .select("id, team_home, team_away")
+    .eq("status", "locked")
+    .lt("scheduled_at", now)
+    .not("toss_winner", "is", null);
+
+  for (const m of toGoLive ?? []) {
+    const { error } = await admin
+      .from("f11_matches")
+      .update({ status: "live" })
+      .eq("id", m.id)
+      .eq("status", "locked");
+
+    if (error) {
+      errors.push(`go-live ${m.id}: ${error.message}`);
+    } else {
+      madeLive.push(`${m.team_home} vs ${m.team_away}`);
+    }
+  }
+
+  // ── 6. FORGOTTEN-LOCK: scheduled matches already past start ──────────────
   const { data: forgottenScheduled } = await admin
     .from("f11_matches")
     .select("id, team_home, team_away")
@@ -266,6 +290,7 @@ export async function GET(req: NextRequest) {
     tossDetected: tossDetected.length ? tossDetected : undefined,
     xiSynced:     xiSynced.length     ? xiSynced     : undefined,
     locked:       locked.length       ? locked       : undefined,
+    madeLive:     madeLive.length     ? madeLive     : undefined,
     movedToReview: staleMovedToReview.length ? staleMovedToReview : undefined,
     errors:       errors.length       ? errors       : undefined,
     checkedAt: now,
