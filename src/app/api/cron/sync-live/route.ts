@@ -411,44 +411,26 @@ export async function GET(req: NextRequest) {
         if (!error) upsertCount++;
       }
 
-      // 5b. Playing XI bonus: upsert +4 for confirmed XI players not yet in scorecard
-      // (e.g., bowling team's non-bowlers early in the first innings)
-      const scorecardPlayerIds = new Set([...playerMap.values()].map((p) => p.id));
-      const { data: xiRows } = await admin
+      // 5b. Award +4 playing XI bonus for confirmed XI players not yet in scorecard
+      const { data: xiPlayers } = await admin
         .from("f11_match_players")
         .select("player_id")
         .eq("match_id", match.id)
         .eq("is_playing_xi", true);
 
-      const missingXiIds = (xiRows ?? [])
-        .map((r) => r.player_id)
-        .filter((pid) => !scorecardPlayerIds.has(pid));
-
-      if (missingXiIds.length > 0) {
-        const { data: missingPlayers } = await admin
-          .from("f11_players")
-          .select("id, role")
-          .in("id", missingXiIds);
-
-        for (const p of missingPlayers ?? []) {
-          const role = p.role as "WK" | "BAT" | "AR" | "BOWL";
-          const breakdown = calcFantasyPoints(
-            { runs: 0, balls_faced: 0, fours: 0, sixes: 0, is_dismissed: false,
-              overs_bowled: 0, wickets: 0, runs_conceded: 0, maidens: 0,
-              catches: 0, stumpings: 0, run_outs: 0, run_outs_assist: 0,
-              batting_position: null, wides: 0 },
-            role, true,
-          );
-          await admin.from("f11_player_stats").upsert(
-            { match_id: match.id, player_id: p.id,
-              runs: 0, balls_faced: 0, fours: 0, sixes: 0, is_dismissed: false,
-              overs_bowled: 0, wickets: 0, runs_conceded: 0, maidens: 0,
-              catches: 0, stumpings: 0, run_outs: 0, run_outs_assist: 0,
-              fantasy_points: breakdown.total, points_breakdown: breakdown },
-            { onConflict: "match_id,player_id" }
-          );
-          upsertCount++;
-        }
+      for (const xiPlayer of xiPlayers ?? []) {
+        await admin.from("f11_player_stats").upsert(
+          {
+            match_id: match.id,
+            player_id: xiPlayer.player_id,
+            runs: 0, balls_faced: 0, fours: 0, sixes: 0, is_dismissed: false,
+            overs_bowled: 0, wickets: 0, runs_conceded: 0, maidens: 0,
+            catches: 0, stumpings: 0, run_outs: 0, run_outs_assist: 0,
+            fantasy_points: 4,
+            points_breakdown: { playing_xi: 4 },
+          },
+          { onConflict: "match_id,player_id", ignoreDuplicates: true }
+        );
       }
 
       // 6. Update live score summary + stamp last_synced_at (for LiveScoreHeader + diagnostics)

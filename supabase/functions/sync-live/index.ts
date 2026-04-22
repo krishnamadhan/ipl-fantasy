@@ -32,9 +32,8 @@ function calcPoints(s: any): number {
   // Century REPLACES half-century (not cumulative)
   if (s.runs >= 100) pts += 16;
   else if (s.runs >= 50) pts += 8;
-  // Duck: only WK/BAT/AR — BOWLers exempt (role not stored here, skip for BOWL via overs heuristic)
-  if (s.runs === 0 && s.is_dismissed && s.role !== "BOWL") pts -= 2;
-  if (s.balls_faced >= 10 && s.role !== "BOWL") {
+  if (s.runs === 0 && s.is_dismissed) pts -= 2; // duck penalty
+  if (s.balls_faced >= 10) {
     const sr = (s.runs / s.balls_faced) * 100;
     // TATA IPL: NO SR bonuses — only penalties
     if (sr < 50) pts -= 6;
@@ -45,6 +44,7 @@ function calcPoints(s: any): number {
   if (s.wickets >= 5) pts += 16;
   else if (s.wickets >= 4) pts += 8;
   else if (s.wickets >= 3) pts += 4;
+  // Note: no 3-catch bonus in TATA IPL
   pts += (s.maidens ?? 0) * 8;
   if (s.overs_bowled >= 2) {
     const decimalOvers = cricketOversToDecimal(s.overs_bowled);
@@ -53,9 +53,7 @@ function calcPoints(s: any): number {
     if (eco < 5) pts += 4;
     else if (eco <= 6) pts += 2;
   }
-  const catches = s.catches ?? 0;
-  pts += catches * 8;
-  if (catches >= 3) pts += 4; // 3-catch bonus
+  pts += (s.catches ?? 0) * 8;
   pts += (s.stumpings ?? 0) * 12;
   pts += (s.run_outs ?? 0) * 12;        // direct run out
   pts += (s.run_outs_assist ?? 0) * 6;  // run out assist
@@ -247,22 +245,25 @@ Deno.serve(async () => {
           .upsert(stats, { onConflict: "match_id,player_id" });
       }
 
-      // Playing XI bonus: upsert +4 for confirmed XI players not yet in scorecard
-      const { data: xiRows } = await supabase
+      // Award +4 playing XI bonus for confirmed XI players not yet in scorecard
+      const { data: xiPlayers } = await supabase
         .from("f11_match_players")
         .select("player_id")
         .eq("match_id", match.id)
         .eq("is_playing_xi", true);
 
-      for (const xi of xiRows ?? []) {
-        if (statsMap.has(xi.player_id)) continue;
+      for (const xiPlayer of (xiPlayers ?? [])) {
+        if (statsMap.has(xiPlayer.player_id)) continue;
         await supabase.from("f11_player_stats").upsert(
-          { match_id: match.id, player_id: xi.player_id,
+          {
+            match_id: match.id,
+            player_id: xiPlayer.player_id,
             runs: 0, balls_faced: 0, fours: 0, sixes: 0, is_dismissed: false,
-            overs_bowled: 0, wickets: 0, runs_conceded: 0, maidens: 0,
-            catches: 0, stumpings: 0, run_outs: 0, run_outs_assist: 0,
-            fantasy_points: 4 },
-          { onConflict: "match_id,player_id" }
+            batting_position: null, overs_bowled: 0, wickets: 0, runs_conceded: 0,
+            maidens: 0, wides: 0, catches: 0, stumpings: 0, run_outs: 0, run_outs_assist: 0,
+            fantasy_points: 4,
+          },
+          { onConflict: "match_id,player_id", ignoreDuplicates: true }
         );
       }
 
