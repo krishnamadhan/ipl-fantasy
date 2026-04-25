@@ -9,6 +9,7 @@ import toast, { Toaster } from "react-hot-toast";
 import type { IplMatch } from "@/types/match";
 import type { IplPlayer } from "@/types/player";
 import { shortTeam, cn } from "@/lib/utils/format";
+import { createClient } from "@/lib/supabase/client";
 
 type Tab = "players" | "team" | "captain";
 
@@ -50,6 +51,20 @@ export default function TeamBuilderClient({
         savedTeamId: editTeam.id,
       });
     }
+  }, [match.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-refresh when playing XI is synced after toss
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`match-xi-${match.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "f11_match_players", filter: `match_id=eq.${match.id}` },
+        () => { router.refresh(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [match.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeIndex = store.activeIndex;
@@ -267,7 +282,7 @@ export default function TeamBuilderClient({
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto" style={{ background: "#000" }}>
         {tab === "players" && (
-          <PlayerSelector players={players} teamHome={match.team_home} teamAway={match.team_away} />
+          <PlayerSelector players={players} teamHome={match.team_home} teamAway={match.team_away} tossWinner={match.toss_winner ?? null} />
         )}
         {tab === "team" && <SelectedTeamPitch />}
         {tab === "captain" && (

@@ -54,10 +54,12 @@ export default function PlayerSelector({
   players,
   teamHome,
   teamAway,
+  tossWinner = null,
 }: {
   players: PlayerWithMeta[];
   teamHome: string;
   teamAway: string;
+  tossWinner?: string | null;
 }) {
   const [role, setRole] = useState<RoleFilter>("ALL");
   const [sort, setSort] = useState<SortKey>("credits_desc");
@@ -118,6 +120,16 @@ export default function PlayerSelector({
           <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shrink-0" />
           <p className="text-green-400 text-xs font-bold">
             Playing XI confirmed · {playingCount} players announced
+          </p>
+        </div>
+      )}
+      {/* Toss done but XI not yet synced */}
+      {!xiSynced && tossWinner && (
+        <div className="flex items-center gap-2 px-4 py-2 border-b"
+          style={{ background: "rgba(251,191,36,0.08)", borderColor: "rgba(251,191,36,0.15)" }}>
+          <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse shrink-0" />
+          <p className="text-yellow-400 text-xs font-bold">
+            🪙 Toss done · {tossWinner} won — confirming Playing XI...
           </p>
         </div>
       )}
