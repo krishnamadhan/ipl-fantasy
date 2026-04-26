@@ -281,9 +281,21 @@ function LeaderboardTab({
     return <p className="text-center py-12 text-sm" style={{ color: "#4A5568" }}>No entries yet</p>;
   }
 
-  const myIndex = entries.findIndex((e) => e.user_id === currentUserId);
-  const myRank  = myIndex >= 0 ? (entries[myIndex].rank ?? myIndex + 1) : null;
+  const hasBonus = entries.some((e) => (e.bonus_points ?? 0) > 0);
+  const sorted = hasBonus
+    ? [...entries].sort((a, b) =>
+        (b.total_points + (b.bonus_points ?? 0)) - (a.total_points + (a.bonus_points ?? 0))
+      )
+    : entries;
+
+  const myIndex = sorted.findIndex((e) => e.user_id === currentUserId);
+  const myRank  = myIndex >= 0 ? (sorted[myIndex].rank ?? myIndex + 1) : null;
   const spotsFromWinning = myRank !== null && myRank > winnersCount ? myRank - winnersCount : 0;
+
+  // grid: rank | team | pts | [bonus] | prize | [compare]
+  const cols = showTeams
+    ? (hasBonus ? "40px 1fr 52px 44px 64px 28px" : "40px 1fr 56px 68px 28px")
+    : (hasBonus ? "40px 1fr 52px 44px 64px"       : "40px 1fr 56px 68px");
 
   return (
     <div>
@@ -327,37 +339,30 @@ function LeaderboardTab({
       {/* Column headers */}
       <div
         className="grid gap-2 px-4 py-2"
-        style={{
-          gridTemplateColumns: showTeams ? "40px 1fr 56px 68px 28px" : "40px 1fr 56px 68px",
-          borderBottom: "1px solid #252D3D",
-        }}
+        style={{ gridTemplateColumns: cols, borderBottom: "1px solid #252D3D" }}
       >
-        {["#", "Team", "Pts", "Prize"].map((h, i) => (
-          <span
-            key={h}
-            className={cn("text-[9px] font-black uppercase tracking-wider", i >= 2 ? "text-right" : "")}
-            style={{ color: "#4A5568" }}
-          >
-            {h}
-          </span>
-        ))}
+        <span className="text-[9px] font-black uppercase tracking-wider" style={{ color: "#4A5568" }}>#</span>
+        <span className="text-[9px] font-black uppercase tracking-wider" style={{ color: "#4A5568" }}>Team</span>
+        <span className="text-[9px] font-black uppercase tracking-wider text-right" style={{ color: "#4A5568" }}>Pts</span>
+        {hasBonus && (
+          <span className="text-[9px] font-black uppercase tracking-wider text-right" style={{ color: "#A855F7" }}>📻</span>
+        )}
+        <span className="text-[9px] font-black uppercase tracking-wider text-right" style={{ color: "#4A5568" }}>Prize</span>
         {showTeams && <div />}
       </div>
 
-      {entries.map((e, i) => {
+      {sorted.map((e, i) => {
         const isMe  = e.user_id === currentUserId;
         const rank  = e.rank ?? i + 1;
+        const bonus = e.bonus_points ?? 0;
         const captainName = e.captain?.name ?? null;
         const showCutoff  = winnersCount > 0 && rank === winnersCount + 1;
 
-        // Compare link: when teams are visible and 2+ entries exist
-        // Self row → compare vs rank-1 (or rank-2 if you ARE rank-1)
-        // Other row → compare current user vs that user
-        const rank1Id = entries[0]?.user_id ?? "";
+        const rank1Id = sorted[0]?.user_id ?? "";
         const diffOpponent = isMe
-          ? (rank1Id !== currentUserId ? rank1Id : entries[1]?.user_id ?? "")
+          ? (rank1Id !== currentUserId ? rank1Id : sorted[1]?.user_id ?? "")
           : e.user_id;
-        const diffHref = showTeams && entries.length > 1 && diffOpponent
+        const diffHref = showTeams && sorted.length > 1 && diffOpponent
           ? `/contests/${contestId}/diff?u1=${currentUserId}&u2=${diffOpponent}`
           : null;
 
@@ -380,7 +385,7 @@ function LeaderboardTab({
             <div
               className="grid gap-2 items-center px-4 py-3.5"
               style={{
-                gridTemplateColumns: showTeams ? "40px 1fr 56px 68px 28px" : "40px 1fr 56px 68px",
+                gridTemplateColumns: cols,
                 background:   isMe ? "rgba(63,239,180,0.06)" : rank <= winnersCount ? "rgba(33,197,93,0.02)" : "transparent",
                 borderBottom: "1px solid #252D3D",
                 borderLeft:   isMe ? "3px solid #3FEFB4" : "3px solid transparent",
@@ -434,6 +439,16 @@ function LeaderboardTab({
                 {e.total_points ?? 0}
               </span>
 
+              {/* Solli Adi bonus */}
+              {hasBonus && (
+                <span
+                  className="text-xs font-bold text-right tabular-nums"
+                  style={{ color: bonus > 0 ? "#A855F7" : "#1C2333" }}
+                >
+                  {bonus > 0 ? `+${bonus}` : "—"}
+                </span>
+              )}
+
               {/* Prize */}
               <span
                 className="text-sm font-bold text-right tabular-nums"
@@ -442,7 +457,7 @@ function LeaderboardTab({
                 {e.prize_won > 0 ? formatPrize(e.prize_won) : "—"}
               </span>
 
-              {/* Compare button (only when teams are visible) */}
+              {/* Compare button */}
               {showTeams && (
                 diffHref ? (
                   <Link
@@ -461,6 +476,18 @@ function LeaderboardTab({
           </div>
         );
       })}
+
+      {/* Solli Adi bonus legend */}
+      {hasBonus && (
+        <div
+          className="px-4 py-2.5"
+          style={{ background: "rgba(168,85,247,0.06)", borderTop: "1px solid rgba(168,85,247,0.15)" }}
+        >
+          <p className="text-xs" style={{ color: "#A855F7" }}>
+            📻 Solli Adi bonus — earned via over prediction game
+          </p>
+        </div>
+      )}
     </div>
   );
 }
