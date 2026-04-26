@@ -63,9 +63,9 @@ function extractPlayers(data: any): Array<{ cricId: string; name: string; roleRa
 }
 
 export async function POST(req: NextRequest) {
-  // Auth: accept FANTASY_BOT_SECRET or CRON_SECRET
+  // Auth: accept BOT_SECRET (Vercel), FANTASY_BOT_SECRET, or CRON_SECRET
   const authHeader = req.headers.get("authorization");
-  const validSecrets = [process.env.FANTASY_BOT_SECRET, process.env.CRON_SECRET].filter(Boolean);
+  const validSecrets = [process.env.BOT_SECRET, process.env.FANTASY_BOT_SECRET, process.env.CRON_SECRET].filter(Boolean);
   if (!validSecrets.some((s) => authHeader === `Bearer ${s}`)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
