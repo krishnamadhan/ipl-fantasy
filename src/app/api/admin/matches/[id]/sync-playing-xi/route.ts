@@ -35,15 +35,19 @@ async function extractNamesWithClaude(
       max_tokens: 512,
       messages: [{
         role: "user",
-        content: `Extract cricket player names from this Cricbuzz match commentary for the game between "${teamHome}" and "${teamAway}".
+        content: `Extract cricket player names from the Cricbuzz commentary text below. The match is ${teamHome} vs ${teamAway}.
+
+STRICT RULES:
+- Only return names that appear VERBATIM or near-verbatim in the text below.
+- Do NOT use your training knowledge about cricket or these teams.
+- Do NOT invent or guess player names — only extract what is written.
+- If fewer than 5 names appear in the text, return [].
 
 Commentary text:
 ${commText.slice(0, 4000)}
 
-Return ONLY a JSON array of full player names that are playing in this match today.
-Include players from BOTH teams. Look for playing XI announcements, toss messages, batting and bowling names.
-Example format: ["Virat Kohli", "Rohit Sharma", "MS Dhoni"]
-Return [] if no player names found. Return ONLY the JSON array, nothing else.`,
+Return ONLY a JSON array of player name strings extracted from the text above.
+Return [] if no player names are found. Return ONLY the JSON array, nothing else.`,
       }],
     });
     const text = msg.content[0]?.type === "text" ? msg.content[0].text.trim() : "";

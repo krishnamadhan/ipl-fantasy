@@ -8,7 +8,7 @@ export interface PlayerWithMeta extends IplPlayer {
   selection_pct?: number;
   last_points?: number;
   is_playing_xi?: boolean;
-  last_match_stats?: { runs: number; wickets: number; catches: number; fantasy_points: number } | null;
+  last_match_stats?: { runs: number; wickets: number; catches: number; fantasy_points: number; played: boolean } | null;
 }
 
 type SortKey = "credits_desc" | "credits_asc" | "points_desc" | "sel_desc";
@@ -237,8 +237,8 @@ export default function PlayerSelector({
           const xiStatus = p.is_playing_xi;
           const badge = ROLE_BADGE[p.role];
           const lms = p.last_match_stats;
-          // Build last-match summary string shown pre-toss
-          const lastMatchLine = lms
+          // Build last-match summary string (only when player actually played)
+          const lastMatchLine = lms?.played
             ? [
                 lms.runs > 0 ? `${lms.runs}R` : null,
                 lms.wickets > 0 ? `${lms.wickets}W` : null,
@@ -312,11 +312,17 @@ export default function PlayerSelector({
                       BENCH
                     </span>
                   )}
-                  {/* Pre-toss: show last match stats */}
-                  {!xiSynced && lastMatchLine && (
-                    <span className="text-[9px] font-medium" style={{ color: "#94a3b8" }}>
-                      Last: {lastMatchLine}
-                    </span>
+                  {/* Pre-toss: show last match stats or "Didn't play" */}
+                  {!xiSynced && lms != null && (
+                    lms.played === false ? (
+                      <span className="text-[9px] font-medium" style={{ color: "#6b7280" }}>
+                        Didn&apos;t play
+                      </span>
+                    ) : lastMatchLine ? (
+                      <span className="text-[9px] font-medium" style={{ color: "#94a3b8" }}>
+                        Last: {lastMatchLine}
+                      </span>
+                    ) : null
                   )}
                 </div>
               </div>
