@@ -14,6 +14,8 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils/format";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ u1?: string; u2?: string }>;

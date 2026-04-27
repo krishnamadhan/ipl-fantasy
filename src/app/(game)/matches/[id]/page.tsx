@@ -1,17 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { formatCurrency, shortTeam, formatDateTime } from "@/lib/utils/format";
+import { formatCurrency, shortTeam, formatDateTime, TEAM_COLORS } from "@/lib/utils/format";
 import type { IplMatch } from "@/types/match";
 import CountdownTimer from "@/components/ui/CountdownTimer";
 
 export const dynamic = "force-dynamic";
-
-const TEAM_COLORS: Record<string, string> = {
-  CSK: "#F5A623", MI: "#004BA0", RCB: "#EC1C24", KKR: "#3A225D",
-  DC: "#0078BC", RR: "#EA1A85", PBKS: "#ED1B24", SRH: "#F26522",
-  GT: "#1C1C1C", LSG: "#A4D65E",
-};
 
 function teamColor(team: string): string {
   return TEAM_COLORS[shortTeam(team)] ?? "#475569";

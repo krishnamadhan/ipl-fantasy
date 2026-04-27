@@ -1,9 +1,8 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import toast from "react-hot-toast";
-import { Toaster } from "react-hot-toast";
-import { shortTeam } from "@/lib/utils/format";
+import toast, { Toaster } from "react-hot-toast";
+import { shortTeam, formatCurrency } from "@/lib/utils/format";
 
 function JoinByCodeContent() {
   const [code, setCode] = useState("");
@@ -99,7 +98,7 @@ function JoinByCodeContent() {
                 {preview.entry_fee === 0 ? (
                   <span className="text-green-400">FREE</span>
                 ) : (
-                  `${preview.entry_fee.toLocaleString("en-IN")} pts`
+                  formatCurrency(preview.entry_fee)
                 )}
               </span>
             </div>
@@ -107,8 +106,8 @@ function JoinByCodeContent() {
               <span className="text-slate-400">Prize Pool</span>
               <span className="font-bold" style={{ color: "#F5A623" }}>
                 {preview.prize_pool === 0
-                  ? `${(preview.entry_fee * (preview.entry_count ?? 0) * 0.9).toLocaleString("en-IN")} pts`
-                  : `${preview.prize_pool.toLocaleString("en-IN")} pts`}
+                  ? formatCurrency(Math.floor(preview.entry_fee * (preview.entry_count ?? 0) * 0.9))
+                  : formatCurrency(preview.prize_pool)}
               </span>
             </div>
             <button

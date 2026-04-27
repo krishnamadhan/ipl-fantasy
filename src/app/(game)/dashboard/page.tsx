@@ -367,7 +367,7 @@ export default async function DashboardPage() {
 
                   {/* Points */}
                   <p className="font-rajdhani font-bold text-sm shrink-0" style={{ color: isMe ? "#3FEFB4" : "#F0F4FF" }}>
-                    {row.totalPoints.toFixed(1)} <span className="text-[10px] font-normal" style={{ color: "#4A5568" }}>pts</span>
+                    {row.totalPoints.toFixed(0)} <span className="text-[10px] font-normal" style={{ color: "#4A5568" }}>pts</span>
                   </p>
                 </div>
               );

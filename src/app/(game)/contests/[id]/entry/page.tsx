@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { cn } from "@/lib/utils/format";
 import type { IplPlayer, PlayerMatchStats } from "@/types/player";
 
+export const dynamic = "force-dynamic";
+
 export default async function EntryBreakdownPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();

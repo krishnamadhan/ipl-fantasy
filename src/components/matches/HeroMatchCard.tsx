@@ -1,4 +1,6 @@
+"use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { shortTeam, TEAM_COLORS, formatCurrency } from "@/lib/utils/format";
 import CountdownTimer from "@/components/ui/CountdownTimer";
 
@@ -19,6 +21,7 @@ interface Props {
 }
 
 export default function HeroMatchCard({ match, contestCount, totalPrize, hasTeam }: Props) {
+  const router   = useRouter();
   const isLive   = match.status === "live";
   const isOpen   = match.status === "open";
   const isLocked = match.status === "locked";
@@ -40,9 +43,13 @@ export default function HeroMatchCard({ match, contestCount, totalPrize, hasTeam
   }
 
   return (
-    <Link href={`/matches/${match.id}`} className="block mx-4 mb-4">
+    <div className="block mx-4 mb-4">
       <div
-        className="relative overflow-hidden rounded-2xl p-4 card-press"
+        role="button"
+        tabIndex={0}
+        onClick={() => router.push(`/matches/${match.id}`)}
+        onKeyDown={(e) => e.key === "Enter" && router.push(`/matches/${match.id}`)}
+        className="relative overflow-hidden rounded-2xl p-4 card-press cursor-pointer"
         style={{
           background:  "linear-gradient(135deg, #141920 0%, #1C2333 100%)",
           border:       "1px solid #252D3D",
@@ -180,8 +187,8 @@ export default function HeroMatchCard({ match, contestCount, totalPrize, hasTeam
           </div>
         </div>
 
-        {/* CTA ROW — stop propagation so card-link doesn't fire */}
-        <div className="flex gap-2.5" onClick={(e) => e.preventDefault()}>
+        {/* CTA ROW — stopPropagation prevents card click from firing */}
+        <div className="flex gap-2.5" onClick={(e) => e.stopPropagation()}>
           <Link
             href={`/contests/browse/${match.id}`}
             className="flex-1 text-center font-rajdhani font-bold text-sm py-3 rounded-xl transition-transform active:scale-[0.97] duration-100"
@@ -198,6 +205,6 @@ export default function HeroMatchCard({ match, contestCount, totalPrize, hasTeam
           </Link>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }

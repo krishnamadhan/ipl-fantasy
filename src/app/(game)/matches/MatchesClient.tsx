@@ -14,10 +14,10 @@ function isExpired(m: { status: string; scheduled_at: string }) {
 }
 
 function formatPrize(amount: number): string {
-  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M pts`;
-  if (amount >= 1_000)     return `${(amount / 1_000).toFixed(0)}K pts`;
-  if (amount > 0)          return `${amount} pts`;
-  return "pts contest";
+  if (amount >= 1_000_000) return `₹${(amount / 1_000_000).toFixed(1)}M`;
+  if (amount >= 1_000)     return `₹${(amount / 1_000).toFixed(0)}K`;
+  if (amount > 0)          return `₹${amount}`;
+  return "—";
 }
 
 export default function MatchesClient({

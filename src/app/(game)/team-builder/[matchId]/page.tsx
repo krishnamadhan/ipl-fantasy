@@ -4,6 +4,8 @@ import TeamBuilderClient from "@/components/team-builder/TeamBuilderClient";
 import type { IplPlayer } from "@/types/player";
 import type { IplMatch } from "@/types/match";
 
+export const dynamic = "force-dynamic";
+
 export default async function TeamBuilderPage({
   params,
   searchParams,
