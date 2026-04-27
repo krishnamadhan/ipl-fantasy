@@ -69,12 +69,13 @@ export async function POST(req: NextRequest) {
   const { match_id } = await req.json();
   if (!match_id) return NextResponse.json({ error: "match_id required" }, { status: 400 });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const res = await fetch(`${baseUrl}/api/admin/sync-squads`, {
+  // Use /api/cron/sync-squads which accepts BOT_SECRET — avoids user-session auth required by admin route
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ipl11.vercel.app";
+  const res = await fetch(`${baseUrl}/api/cron/sync-squads`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.CRON_SECRET ?? ""}`,
+      "Authorization": `Bearer ${process.env.BOT_SECRET ?? process.env.FANTASY_BOT_SECRET ?? ""}`,
     },
     body: JSON.stringify({ match_id }),
   });
