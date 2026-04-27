@@ -130,9 +130,11 @@ export async function GET(req: NextRequest) {
     .filter(Boolean)
     .sort((a: any, b: any) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9)) as any[];
 
+  const profile = entry.profile as any;
+
   return NextResponse.json({
     contest_status: contest.status,
-    display_name: entry.profile?.display_name ?? entry.profile?.username ?? "Unknown",
+    display_name: profile?.display_name ?? profile?.username ?? "Unknown",
     team_name: entry.team_name ?? null,
     rank: entry.rank ?? null,
     total_points: entry.total_points ?? 0,
