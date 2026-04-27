@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatCurrency, shortTeam, cn } from "@/lib/utils/format";
 import { createClient } from "@/lib/supabase/client";
+import toast, { Toaster } from "react-hot-toast";
 
 type Tab = "leaderboard" | "myteam" | "prizes";
 
@@ -66,6 +67,26 @@ export default function ContestDetailClient({
     return () => clearInterval(id);
   }, [isLive, refreshLeaderboard]);
 
+  const [copied, setCopied] = useState(false);
+
+  function copyInviteCode() {
+    if (!contest.invite_code) return;
+    navigator.clipboard.writeText(contest.invite_code).then(() => {
+      setCopied(true);
+      toast.success("Invite code copied!");
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      toast.error("Could not copy — code: " + contest.invite_code);
+    });
+  }
+
+  function shareWhatsApp() {
+    const code = contest.invite_code;
+    const text = `Join my IPL Fantasy contest "${contest.name}"!\nUse code: *${code}* to join. 🏏`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+  }
+
   const myEntry = myEntries[0];
   const tiers: any[] = contest.prize_tiers ?? [];
   const fillPct = contest.max_teams > 0
@@ -77,6 +98,7 @@ export default function ContestDetailClient({
 
   return (
     <div className="max-w-lg mx-auto flex flex-col min-h-screen" style={{ background: "#080d1a" }}>
+      <Toaster position="top-center" toastOptions={{ style: { background: "#1E293B", color: "white", border: "1px solid #334155" } }} />
 
       {/* ── Header ── */}
       <div
@@ -140,6 +162,40 @@ export default function ContestDetailClient({
             />
           </div>
         </div>
+
+        {/* Private invite code banner */}
+        {contest.contest_type === "private" && contest.invite_code && (
+          <div
+            className="mx-4 mb-3 rounded-2xl border overflow-hidden"
+            style={{ background: "rgba(148,163,184,0.05)", borderColor: "rgba(148,163,184,0.15)" }}
+          >
+            <div className="px-4 py-2.5 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest">Invite Code</p>
+                <p className="text-white font-black text-lg leading-tight tracking-widest">{contest.invite_code}</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={copyInviteCode}
+                  className={cn(
+                    "px-3 py-2 rounded-xl text-xs font-black border transition",
+                    copied
+                      ? "bg-green-500/15 border-green-500/30 text-green-400"
+                      : "bg-white/5 border-white/10 text-slate-300 hover:border-white/20"
+                  )}
+                >
+                  {copied ? "✓ Copied" : "Copy"}
+                </button>
+                <button
+                  onClick={shareWhatsApp}
+                  className="px-3 py-2 rounded-xl text-xs font-black border border-green-500/25 text-green-400 bg-green-500/8 hover:bg-green-500/12 transition"
+                >
+                  WhatsApp
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* My rank highlight */}
         {myEntry?.rank && (
@@ -284,7 +340,8 @@ function LeaderboardTab({
       {entries.map((e, i) => {
         const isMe = e.user_id === currentUserId;
         const rank = e.rank ?? i + 1;
-        const captainName = e.captain_name ?? null;
+        const captainObj = Array.isArray(e.captain) ? e.captain[0] : e.captain;
+        const captainName = captainObj?.name ?? null;
 
         return (
           <div

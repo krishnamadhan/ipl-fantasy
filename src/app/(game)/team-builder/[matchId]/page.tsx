@@ -47,12 +47,39 @@ export default async function TeamBuilderPage({ params }: { params: Promise<{ ma
     playingXiMap.set(mp.player_id, mp.is_playing_xi);
   }
 
-  // Filter to match teams + add playing XI meta
+  // Compute selection % from entries for this match's contests
+  const selectionPctMap = new Map<string, number>();
+  const { data: matchContests } = await admin
+    .from("f11_contests")
+    .select("id")
+    .eq("match_id", matchId);
+  if (matchContests && matchContests.length > 0) {
+    const cIds = matchContests.map((c: any) => c.id);
+    const { data: entries } = await admin
+      .from("f11_entries")
+      .select("player_ids")
+      .in("contest_id", cIds);
+    const total = entries?.length ?? 0;
+    if (total > 0) {
+      const counts = new Map<string, number>();
+      for (const entry of entries ?? []) {
+        for (const pid of (entry.player_ids as string[]) ?? []) {
+          counts.set(pid, (counts.get(pid) ?? 0) + 1);
+        }
+      }
+      for (const [pid, cnt] of counts) {
+        selectionPctMap.set(pid, Math.round((cnt / total) * 100));
+      }
+    }
+  }
+
+  // Filter to match teams + add playing XI and selection meta
   const matchPlayersList = allPlayers
     .filter((p) => p.ipl_team === match.team_home || p.ipl_team === match.team_away)
     .map((p) => ({
       ...p,
       is_playing_xi: playingXiMap.has(p.id) ? playingXiMap.get(p.id) : undefined,
+      selection_pct: selectionPctMap.get(p.id) ?? 0,
     }));
 
   return (
