@@ -97,17 +97,20 @@ export async function POST(req: NextRequest) {
 
   // Seed f11_match_players for both teams so squad is immediately available for team selection.
   // Fire-and-forget — don't block the contest creation response.
-  admin
-    .from("f11_players")
-    .select("id")
-    .in("ipl_team", [match.team_home, match.team_away])
-    .eq("is_playing", true)
-    .then(({ data: players }) => {
+  void (async () => {
+    try {
+      const { data: players } = await admin
+        .from("f11_players")
+        .select("id")
+        .in("ipl_team", [match.team_home, match.team_away])
+        .eq("is_playing", true);
       if (!players?.length) return;
       const rows = players.map((p) => ({ match_id, player_id: p.id, is_playing_xi: null }));
-      return admin.from("f11_match_players").upsert(rows, { onConflict: "match_id,player_id" });
-    })
-    .catch((e) => console.error("[bot/contest] match_players seed failed:", e?.message));
+      await admin.from("f11_match_players").upsert(rows, { onConflict: "match_id,player_id" });
+    } catch (e: any) {
+      console.error("[bot/contest] match_players seed failed:", e?.message);
+    }
+  })();
 
   return NextResponse.json({ ok: true, contest, created: true });
 }
