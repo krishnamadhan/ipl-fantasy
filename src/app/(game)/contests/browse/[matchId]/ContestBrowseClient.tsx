@@ -53,6 +53,8 @@ export default function ContestBrowseClient({
   const [switchingEntry, setSwitchingEntry]     = useState<Entry | null>(null);
   const [switchTeamId, setSwitchTeamId]         = useState<string | null>(null);
   const [switchLoading, setSwitchLoading]       = useState(false);
+  const [leavingEntryId, setLeavingEntryId]     = useState<string | null>(null);
+  const [leaveLoading, setLeaveLoading]         = useState(false);
 
   const filtered = typeFilter === "all" ? contests : contests.filter((c) => c.contest_type === typeFilter);
   const matchIsOpen = match.status === "open";
@@ -117,6 +119,22 @@ export default function ContestBrowseClient({
     const first = myTeams.find((t) => !alreadyJoined.has(t.id));
     setSelectedTeamId(first?.id ?? null);
     setJoiningContestId(contestId);
+  }
+
+  async function handleLeave(entryId: string) {
+    setLeaveLoading(true);
+    try {
+      const res = await fetch(`/api/contests/leave/${entryId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success("Left contest. Entry fee refunded.");
+      setLeavingEntryId(null);
+      setTimeout(() => { window.location.reload(); }, 700);
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to leave");
+    } finally {
+      setLeaveLoading(false);
+    }
   }
 
   function openSwitchSheet(entry: Entry) {
@@ -370,14 +388,25 @@ export default function ContestBrowseClient({
                               </span>
                             )}
                           </div>
-                          {matchIsOpen && myTeams.length > 1 && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openSwitchSheet(entry); }}
-                              className="text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ml-2 transition-opacity hover:opacity-80"
-                              style={{ color: "#8A95A8", border: "1px solid #252D3D", background: "transparent" }}
-                            >
-                              Switch
-                            </button>
+                          {matchIsOpen && (
+                            <div className="flex gap-1 shrink-0 ml-2">
+                              {myTeams.length > 1 && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); openSwitchSheet(entry); }}
+                                  className="text-[10px] font-bold px-2 py-0.5 rounded-lg transition-opacity hover:opacity-80"
+                                  style={{ color: "#8A95A8", border: "1px solid #252D3D", background: "transparent" }}
+                                >
+                                  Switch
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setLeavingEntryId(entry.id); }}
+                                className="text-[10px] font-bold px-2 py-0.5 rounded-lg transition-opacity hover:opacity-80"
+                                style={{ color: "#FF3B3B", border: "1px solid rgba(255,59,59,0.3)", background: "transparent" }}
+                              >
+                                Leave
+                              </button>
+                            </div>
                           )}
                         </div>
                       );
@@ -620,6 +649,39 @@ export default function ContestBrowseClient({
             >
               {switchLoading ? "Switching…" : "Confirm Switch"}
             </button>
+          </div>
+        </div>
+      )}
+      {/* ── Leave confirm dialog ── */}
+      {leavingEntryId && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center px-4" onClick={() => setLeavingEntryId(null)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div
+            className="relative rounded-2xl p-6 w-full max-w-sm"
+            style={{ background: "#1C2333", border: "1px solid #252D3D" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-white font-rajdhani font-bold text-lg mb-2">Leave Contest?</h3>
+            <p className="text-sm mb-6" style={{ color: "#8A95A8" }}>
+              Your entry fee will be refunded to your wallet. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setLeavingEntryId(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+                style={{ background: "rgba(255,255,255,0.06)", color: "#8A95A8" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleLeave(leavingEntryId)}
+                disabled={leaveLoading}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50"
+                style={{ background: "rgba(255,59,59,0.15)", color: "#FF3B3B", border: "1px solid rgba(255,59,59,0.3)" }}
+              >
+                {leaveLoading ? "Leaving…" : "Yes, Leave"}
+              </button>
+            </div>
           </div>
         </div>
       )}
