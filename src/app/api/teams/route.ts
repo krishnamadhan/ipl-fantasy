@@ -128,9 +128,14 @@ export async function POST(req: NextRequest) {
     // Immediately recompute leaderboard so total_points reflects the new team without
     // waiting for the next sync-live cycle (handles the window where sync already ran
     // with the old team or the match is no longer live so sync won't run again).
-    admin.rpc("f11_update_leaderboard", { p_match_id: match_id }).catch((e: any) =>
-      console.warn("[teams] post-edit leaderboard recompute failed:", e?.message)
-    );
+    void (async () => {
+      try {
+        const { error } = await admin.rpc("f11_update_leaderboard", { p_match_id: match_id });
+        if (error) console.warn("[teams] leaderboard recompute failed:", error.message);
+      } catch (e: any) {
+        console.warn("[teams] leaderboard recompute error:", e?.message);
+      }
+    })();
 
     return NextResponse.json({ team: data });
   } else {
