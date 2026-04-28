@@ -111,6 +111,27 @@ export async function POST(req: NextRequest) {
       .select()
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // Sync the updated players/captain/vc into any contest entries that reference this team.
+    // f11_entries holds a snapshot — without this, edits to the team have no effect on scoring.
+    await admin
+      .from("f11_entries")
+      .update({
+        player_ids: player_ids,
+        captain_id: captain_id,
+        vc_id:      vc_id,
+        team_name:  payload.team_name,
+      })
+      .eq("team_id", team_id)
+      .eq("user_id", user.id);
+
+    // Immediately recompute leaderboard so total_points reflects the new team without
+    // waiting for the next sync-live cycle (handles the window where sync already ran
+    // with the old team or the match is no longer live so sync won't run again).
+    admin.rpc("f11_update_leaderboard", { p_match_id: match_id }).catch((e: any) =>
+      console.warn("[teams] post-edit leaderboard recompute failed:", e?.message)
+    );
+
     return NextResponse.json({ team: data });
   } else {
     const { data, error } = await supabase
