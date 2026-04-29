@@ -124,6 +124,9 @@ Use the KEY (P1, P2, etc.) not player names. Respond ONLY with this JSON:
     const json = JSON.parse(match[0]);
     if (!Array.isArray(json.player_ids) || json.player_ids.length !== 11)
       throw new Error(`Bad player_ids: ${JSON.stringify(json.player_ids)?.slice(0, 80)}`);
+    const uniqueKeys = new Set<string>(json.player_ids);
+    if (uniqueKeys.size !== 11)
+      throw new Error(`Duplicate player keys (${uniqueKeys.size} unique from 11): ${json.player_ids}`);
     if (!json.captain_id || !json.vc_id)
       throw new Error("Missing captain_id or vc_id");
 
