@@ -51,7 +51,7 @@ async function fetchMatchPlayers(admin: ReturnType<typeof createServiceClient>, 
     statsByPlayer[s.player_id] = (statsByPlayer[s.player_id] ?? 0) + (s.fantasy_points ?? 0);
   }
 
-  return (data as any[])
+  const mapped = (data as any[])
     .filter((mp) => mp.player?.id)
     .map((mp) => ({
       id: mp.player.id,
@@ -62,6 +62,15 @@ async function fetchMatchPlayers(admin: ReturnType<typeof createServiceClient>, 
       is_playing_xi: mp.is_playing_xi,
       season_points: statsByPlayer[mp.player.id] ?? 0,
     }));
+
+  // Deduplicate by player ID — prefer is_playing_xi=true over null/false
+  const seen = new Map<string, (typeof mapped)[0]>();
+  for (const p of mapped) {
+    if (!seen.has(p.id) || (p.is_playing_xi && !seen.get(p.id)!.is_playing_xi)) {
+      seen.set(p.id, p);
+    }
+  }
+  return [...seen.values()];
 }
 
 async function pickTeamWithClaude(
@@ -136,6 +145,8 @@ Use the KEY (P1, P2, etc.) not player names. Respond ONLY with this JSON:
     const vcId = idMap[json.vc_id];
 
     if (resolvedIds.length !== 11) throw new Error(`Could not resolve all player keys: ${json.player_ids}`);
+    const uniqueIds = new Set(resolvedIds);
+    if (uniqueIds.size !== 11) throw new Error(`Duplicate player UUIDs in selection (${uniqueIds.size} unique of 11)`);
     if (!captainId) throw new Error(`Invalid captain key: ${json.captain_id}`);
     if (!vcId) throw new Error(`Invalid vc key: ${json.vc_id}`);
 
@@ -274,7 +285,12 @@ export async function PUT(req: NextRequest) {
   const xiPlayers = players.filter((p) => p.is_playing_xi);
   const poolToUse = xiPlayers.length >= 11 ? xiPlayers : players;
 
-  const pick = await pickTeamWithClaude(poolToUse, { home: match.team_home, away: match.team_away });
+  let pick;
+  try {
+    pick = await pickTeamWithClaude(poolToUse, { home: match.team_home, away: match.team_away });
+  } catch (e: any) {
+    return NextResponse.json({ error: `Claude error: ${e?.message ?? e}` }, { status: 500 });
+  }
   if (!pick)
     return NextResponse.json({ error: "Claude failed to pick a valid team" }, { status: 500 });
 
