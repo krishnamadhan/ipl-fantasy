@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import ContestDetailClient from "./ContestDetailClient";
 
@@ -10,7 +10,9 @@ export default async function ContestDetailPage({ params }: { params: Promise<{ 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: contest } = await supabase
+  const admin = createServiceClient();
+
+  const { data: contest } = await admin
     .from("f11_contests")
     .select("*, match:f11_matches(*)")
     .eq("id", id)
@@ -22,14 +24,14 @@ export default async function ContestDetailPage({ params }: { params: Promise<{ 
   const showTeams = ["locked", "live", "in_review", "completed"].includes(match?.status ?? "");
 
   const [entriesRes, myEntriesRes] = await Promise.all([
-    supabase
+    admin
       .from("f11_entries")
       .select("id, user_id, team_name, total_points, bonus_points, rank, prize_won, captain:f11_players!captain_id(name)")
       .eq("contest_id", id)
       .order("rank", { ascending: true, nullsFirst: false })
       .order("total_points", { ascending: false })
       .limit(100),
-    supabase
+    admin
       .from("f11_entries")
       .select("id, user_id, team_name, total_points, bonus_points, rank, prize_won, captain:f11_players!captain_id(name)")
       .eq("contest_id", id)
