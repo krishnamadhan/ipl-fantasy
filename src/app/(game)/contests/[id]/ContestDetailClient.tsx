@@ -48,6 +48,10 @@ export default function ContestDetailClient({
   }, [contest.id]);
 
   useEffect(() => {
+    if (isLive || isInReview) refreshLeaderboard();
+  }, [isLive, isInReview, refreshLeaderboard]);
+
+  useEffect(() => {
     if (!isLive && !isInReview) return;
     const supabase = createClient();
     const channel = supabase
