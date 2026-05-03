@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import LiveScoreHeader from "@/components/live/LiveScoreHeader";
@@ -80,7 +80,8 @@ export default async function LiveMatchPage({
   }
 
   if (contestId) {
-    const { data: lb } = await supabase
+    const admin = createServiceClient();
+    const { data: lb } = await admin
       .from("f11_entries")
       .select(
         "id, user_id, team_name, total_points, rank, previous_rank, prize_won, profile:f11_profiles!user_id(display_name, username)"
