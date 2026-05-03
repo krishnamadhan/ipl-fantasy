@@ -417,7 +417,7 @@ function LeaderboardTab({
                     className="text-sm font-bold truncate"
                     style={{ color: isMe ? "#3FEFB4" : "#F0F4FF" }}
                   >
-                    {e.team_name ?? "Team"}
+                    {e.profile?.display_name ?? e.profile?.username ?? e.team_name ?? "Team"}
                   </p>
                   {isMe && (
                     <span
