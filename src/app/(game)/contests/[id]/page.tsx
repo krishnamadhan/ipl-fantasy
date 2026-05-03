@@ -26,14 +26,14 @@ export default async function ContestDetailPage({ params }: { params: Promise<{ 
   const [entriesRes, myEntriesRes] = await Promise.all([
     admin
       .from("f11_entries")
-      .select("id, user_id, team_name, total_points, rank, prize_won, captain:f11_players!captain_id(name)")
+      .select("id, user_id, team_name, total_points, rank, prize_won")
       .eq("contest_id", id)
       .order("rank", { ascending: true, nullsFirst: false })
       .order("total_points", { ascending: false })
       .limit(100),
     admin
       .from("f11_entries")
-      .select("id, user_id, team_name, total_points, rank, prize_won, captain:f11_players!captain_id(name)")
+      .select("id, user_id, team_name, total_points, rank, prize_won")
       .eq("contest_id", id)
       .eq("user_id", user.id),
   ]);
