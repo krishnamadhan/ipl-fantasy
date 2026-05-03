@@ -567,9 +567,9 @@ function MyTeamTab({
             >
               View Breakdown
             </Link>
-            {!showTeams && (
+            {!showTeams && matchId && (
               <Link
-                href={`/team-builder/${e.match_id}`}
+                href={`/team-builder/${matchId}`}
                 className="flex-1 text-center py-2.5 rounded-xl text-sm font-bold transition-opacity hover:opacity-80"
                 style={{ color: "#3FEFB4", border: "1px solid rgba(63,239,180,0.30)", background: "rgba(63,239,180,0.06)" }}
               >
