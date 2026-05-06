@@ -69,17 +69,7 @@ export async function POST(req: NextRequest) {
   const { match_id } = await req.json();
   if (!match_id) return NextResponse.json({ error: "match_id required" }, { status: 400 });
 
-  // Use /api/cron/sync-squads which accepts BOT_SECRET — avoids user-session auth required by admin route
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ipl11.vercel.app";
-  const res = await fetch(`${baseUrl}/api/cron/sync-squads`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.BOT_SECRET ?? process.env.FANTASY_BOT_SECRET ?? ""}`,
-    },
-    body: JSON.stringify({ match_id }),
-  });
-
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+  // sync-squads fetches all 10 IPL team rosters — too slow for Vercel's 10s limit.
+  // Toss/XI data is already in DB; just return ok so the GET that follows can read it.
+  return NextResponse.json({ ok: true, match_id });
 }
