@@ -53,7 +53,10 @@ export default function TeamBuilderClient({
     }
   }, [match.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-refresh when playing XI is synced after toss
+  // Auto-refresh when playing XI is synced after toss.
+  // Real-time subscription fires immediately; polling is a fallback in case
+  // Supabase real-time isn't enabled for f11_match_players.
+  const xiSyncedRef = players.some((p) => p.is_playing_xi === true);
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
@@ -66,6 +69,13 @@ export default function TeamBuilderClient({
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [match.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Polling fallback: refresh every 30s while toss is detected but XI not yet confirmed
+  useEffect(() => {
+    if (xiSyncedRef || !match.toss_winner) return;
+    const id = setInterval(() => { router.refresh(); }, 30_000);
+    return () => clearInterval(id);
+  }, [xiSyncedRef, match.toss_winner]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeIndex = store.activeIndex;
   const drafts = store.drafts;

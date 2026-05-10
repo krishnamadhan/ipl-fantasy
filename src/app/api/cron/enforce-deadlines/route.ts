@@ -162,9 +162,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── 3. XI SYNC: open matches where toss was detected ≥ 10 min ago ────────
-  // Trigger playing XI sync to give users time to update their team before lock.
-  const tenMinAgo = new Date(nowMs - 10 * 60 * 1000).toISOString();
+  // ── 3. XI SYNC: open matches where toss was detected ≥ 3 min ago ─────────
+  // 3-min delay lets Cricbuzz publish the lineup before we scrape.
+  // Toss is typically 10 min before match start → sync at ~T-7, giving users
+  // ~7 min to update their team before auto-lock at scheduled_at.
+  const tenMinAgo = new Date(nowMs - 3 * 60 * 1000).toISOString();
 
   const xiWindow = new Date(nowMs - 4 * 60 * 60 * 1000).toISOString(); // within 4h of start
   const { data: tossedMatches } = await admin
@@ -183,7 +185,7 @@ export async function GET(req: NextRequest) {
       .eq("match_id", m.id)
       .eq("is_playing_xi", true);
 
-    if ((count ?? 0) > 0) continue; // already synced
+    if ((count ?? 0) >= 18) continue; // adequately synced (both XIs confirmed)
 
     try {
       const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://ipl11.vercel.app";
