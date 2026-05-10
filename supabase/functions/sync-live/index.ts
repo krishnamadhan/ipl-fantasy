@@ -32,7 +32,8 @@ function calcPoints(s: any): number {
   // Century REPLACES half-century (not cumulative)
   if (s.runs >= 100) pts += 16;
   else if (s.runs >= 50) pts += 8;
-  if (s.runs === 0 && s.is_dismissed) pts -= 2; // duck penalty
+  // Duck penalty: WK/BAT/AR only — BOWL players are exempt (TATA IPL rule)
+  if (s.runs === 0 && s.is_dismissed && s.role !== "BOWL") pts -= 2;
   if (s.balls_faced >= 10) {
     const sr = (s.runs / s.balls_faced) * 100;
     // TATA IPL: NO SR bonuses — only penalties
@@ -183,13 +184,14 @@ Deno.serve(async () => {
 
           const { data: player } = await supabase
             .from("f11_players")
-            .select("id")
+            .select("id, role")
             .eq("cricapi_player_id", cricId)
             .maybeSingle();
           if (!player) continue;
 
           const existing = statsMap.get(player.id) ?? {
             match_id: match.id, player_id: player.id,
+            role: player.role,
             runs: 0, balls_faced: 0, fours: 0, sixes: 0, is_dismissed: false,
             batting_position: null, overs_bowled: 0, wickets: 0, runs_conceded: 0,
             maidens: 0, wides: 0, catches: 0, stumpings: 0, run_outs: 0, run_outs_assist: 0,
@@ -214,13 +216,14 @@ Deno.serve(async () => {
 
           const { data: player } = await supabase
             .from("f11_players")
-            .select("id")
+            .select("id, role")
             .eq("cricapi_player_id", cricId)
             .maybeSingle();
           if (!player) continue;
 
           const existing = statsMap.get(player.id) ?? {
             match_id: match.id, player_id: player.id,
+            role: player.role,
             runs: 0, balls_faced: 0, fours: 0, sixes: 0, is_dismissed: false,
             batting_position: null, overs_bowled: 0, wickets: 0, runs_conceded: 0,
             maidens: 0, wides: 0, catches: 0, stumpings: 0, run_outs: 0, run_outs_assist: 0,
